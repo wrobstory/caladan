@@ -23,10 +23,10 @@
 
 (extend-protocol Array
   CategoricalArray
-    (takes [this]
+    (takes [this length]
       (let [return-vector (transient [])
             levels (:levels this)
             indices (:indices this)]
         (hhl/doarr [x indices]
           (conj! return-vector (get levels x)))
-        (into [] (persistent! return-vector)))))
+        (vec (persistent! return-vector)))))
