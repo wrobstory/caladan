@@ -2,7 +2,8 @@
   "Utilities for data i/o into Clojure Maps/Vectors as well as
    Caladan Arrays"
   (:require [clojure.data.csv :as csv]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [caladan.parsers :as cp]))
 
 (defn get-csv-seq
   "Get lazy seq of vectors via data.csv"
@@ -20,7 +21,7 @@
     (doseq [[idx row] (map-indexed vector csv-seq)
             :let [zipped-row (map vector (keys col-map) row)]
             :when (> idx (+ header 1))]
-      (reduce #(update-in %1 [(first %2)] conj! (second %2)) col-map zipped-row))
+      (reduce #(update-in %1 [(first %2)] conj! (cp/parse (second %2))) col-map zipped-row))
     (reduce #(assoc %1 (first %2) (vec (persistent! (second %2)))) {} col-map)))
 
 (defn create-caladan-dataset
