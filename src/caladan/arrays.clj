@@ -1,14 +1,14 @@
 (ns caladan.arrays
   (:require [hiphip.long :as hhl])
   (:refer-clojure :exclude [filter])
-  (:import (java.util HashSet)))
+  (:import (java.util HashSet HashMap)))
 
 (defn subset
   "Given a long-array of indices, a hash map on which to filter the indices, and
-  a vector of levels that can be numerically indexed, return a subsetted
+  a HashMap of levels that can be numerically indexed, return a subsetted
   vector of values.
 
-  Ex: => (subset [0 1 2 0] (HashSet. [0 1]) [\"foo\" \"bar\" \"baz\"])
+  Ex: => (subset [0 1 2 0] (HashSet. [0 1]) {0 \"foo\" 1 \"bar\" 2 \"baz\"})
       [\"foo\" \"bar\" \"foo\"]"
   [^longs indices hashed-indices levels]
     (let [return-vector (transient [])]
@@ -26,14 +26,14 @@
                               (.add hashed-levels (get item 0))
                               hashed-levels)
                             hashed-levels))]
-      (reduce level-filter hashed-levels (map-indexed vector levels))
+      (reduce level-filter hashed-levels (map-indexed vector (.values levels)))
       hashed-levels))
 
 (defn get-indexed-indices
   [in-seq levels]
     (let [values (make-array Long/TYPE (count in-seq))]
       (doseq [[i value] (map-indexed vector in-seq)]
-        (aset ^longs values i (long (.indexOf levels ^String value))))
+        (aset ^longs values i (long (.get levels value))))
       values))
 
 (defprotocol Array
@@ -53,8 +53,18 @@
     (let [filtered-indices (filter-level-indices pred (:levels this))]
       (subset (:indices this) filtered-indices (:levels this)))))
 
+(defn make-levels
+  [str-seq]
+    (let [levels (HashMap.)]
+      (loop [values str-seq
+             idx 0]
+        (when (seq values)
+          (.put levels idx (first values))
+          (recur (rest values) (inc idx))))
+      levels))
+
 (defn make-indexed-array
   [str-seq]
-    (let [levels (into [] (apply sorted-set str-seq))
+    (let [levels (make-levels str-seq)
           indices (get-indexed-indices str-seq levels)]
       (IndexedArray. levels indices)))
