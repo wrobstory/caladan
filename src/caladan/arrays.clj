@@ -4,6 +4,12 @@
   (:import (java.util HashSet)))
 
 (defn subset
+  "Given a long-array of indices, a hash map on which to filter the indices, and
+  a vector of levels that can be numerically indexed, return a subsetted
+  vector of values.
+
+  Ex: => (subset [0 1 2 0] (HashSet. [0 1]) [\"foo\" \"bar\" \"baz\"])
+      [\"foo\" \"bar\" \"foo\"]"
   [^longs indices hashed-indices levels]
     (let [return-vector (transient [])]
       (hhl/doarr [i indices]
