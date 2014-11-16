@@ -8,13 +8,13 @@
   a HashMap of levels that can be numerically indexed, return a subsetted
   vector of values.
 
-  Ex: => (subset [0 1 2 0] (HashSet. [0 1]) {0 \"foo\" 1 \"bar\" 2 \"baz\"})
+  Ex: => (subset [0 1 2 0] (HashSet. [0 1]) [\"foo\" \"bar\" \"baz\"])
       [\"foo\" \"bar\" \"foo\"]"
   [^longs indices hashed-indices levels]
     (let [return-vector (transient [])]
       (hhl/doarr [i indices]
         (if (.contains hashed-indices i)
-          (conj! return-vector (get levels i))))
+          (conj! return-vector (nth levels i))))
       (persistent! return-vector)))
 
 (defn filter-level-indices
@@ -26,15 +26,8 @@
                               (.add hashed-levels (get item 0))
                               hashed-levels)
                             hashed-levels))]
-      (reduce level-filter hashed-levels (map-indexed vector (.values levels)))
+      (reduce level-filter hashed-levels (map-indexed vector levels))
       hashed-levels))
-
-(defn get-indexed-indices
-  [in-seq levels]
-    (let [values (make-array Long/TYPE (count in-seq))]
-      (doseq [[i value] (map-indexed vector in-seq)]
-        (aset ^longs values i (long (.get levels value))))
-      values))
 
 (defprotocol Array
   (takes [this length])
@@ -53,18 +46,38 @@
     (let [filtered-indices (filter-level-indices pred (:levels this))]
       (subset (:indices this) filtered-indices (:levels this)))))
 
-(defn make-levels
-  [str-seq]
-    (let [levels (HashMap.)]
-      (loop [values str-seq
+(defn get-indexed-indices
+  [in-seq levels]
+    (let [values (make-array Long/TYPE (count in-seq))]
+      (doseq [[i value] (map-indexed vector in-seq)]
+        (aset ^longs values i (long (.get levels value))))
+      values))
+
+(defn get-levels-and-indices
+  "Perform a single pass across the vector, building a HashMap of idx:value
+  for lookup, a vector of level values, and a long-array of indices"
+  [arr-seq]
+    (let [level-map (HashMap.)
+          levels (atom [])
+          level-idx (atom 0)
+          indices (make-array Long/TYPE (count arr-seq))]
+      ;; Single pass over arr-seq.
+      (loop [values arr-seq
              idx 0]
         (when (seq values)
-          (.put levels idx (first values))
+          (let [value (first values)
+                map-entry (.get level-map value)]
+            (if map-entry
+              (aset ^longs indices idx (long map-entry))
+              (do
+                (swap! levels conj value)
+                (.put level-map value @level-idx)
+                (aset ^longs indices idx (long @level-idx))
+                (swap! level-idx inc))))
           (recur (rest values) (inc idx))))
-      levels))
+      [@levels indices]))
 
 (defn make-indexed-array
-  [str-seq]
-    (let [levels (make-levels str-seq)
-          indices (get-indexed-indices str-seq levels)]
-      (IndexedArray. levels indices)))
+  [arr-seq]
+    (let [levels-indices (get-levels-and-indices arr-seq)]
+      (IndexedArray. (first levels-indices) (second levels-indices))))
