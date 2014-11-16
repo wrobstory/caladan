@@ -13,3 +13,9 @@
          [(long-array [0 1 0 2]) (HashSet. [0 2]) [1 2 3]] [1 1 3]
          [(long-array [0 0 1]) (HashSet. [0]) [true false]] [true true]
          [(long-array [2 1 3 2]) (HashSet. [1 2 3]) [1.0 5.0 10.0 20.0]] [10.0 5.0 20.0 10.0])))
+
+  (testing "Must filter level indices and produce a HashSet of level indices"
+    (are [in out] (= (ca/filter-level-indices (get in 0) (get in 1)) out)
+         [#(= % 1) [1 2 3]] (HashSet. [0])
+         [#(= (first %) \f) ["foo" "bar" "faz"]] (HashSet. [0 2])
+         [#(true? %) [true false]] (HashSet. [0])))
