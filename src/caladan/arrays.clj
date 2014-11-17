@@ -1,6 +1,6 @@
 (ns caladan.arrays
   (:require [hiphip.long :as hhl])
-  (:refer-clojure :exclude [filter])
+  (:refer-clojure :exclude [filter take])
   (:import (java.util HashSet HashMap)))
 
 (defn subset
@@ -59,12 +59,12 @@
       [@levels indices]))
 
 (defprotocol Array
-  (takes [this length])
+  (take [this length])
   (filter [this pred]))
 
 (defrecord IndexedArray [levels ^longs indices]
   Array
-  (takes [this length]
+  (take [this length]
     (let [return-vector (transient [])
           levels (:levels this)
           indices (:indices this)]
