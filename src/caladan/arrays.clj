@@ -1,20 +1,47 @@
 (ns caladan.arrays
   (:require [hiphip.long :as hhl])
   (:refer-clojure :exclude [filter take])
-  (:import (java.util HashSet HashMap)))
+  (:import (java.util HashSet HashMap)
+           (org.roaringbitmap RoaringBitmap)))
+
+(defn group-indices
+  "Group a given array of long indices and return a HashMap of {index: Bitmap}"
+  [^longs indices ^HashMap return-map]
+    (hhl/doarr [[i x] indices]
+      (let [map-entry (.get return-map x)
+            add-to-bitmap (fn [^RoaringBitmap bit-map value]
+                            (do (.add bit-map i)))]
+        (if map-entry
+          (add-to-bitmap map-entry i)
+          (let [new-bitmap (RoaringBitmap.)
+                hinted-add (fn [i x ^RoaringBitmap bit-map]
+                              (do
+                                (.add bit-map i)
+                                (.put return-map x bit-map)))]
+            (do (hinted-add i x new-bitmap))))))
+    return-map)
+
+(defn takes
+  "Given a long-array of indices and a Bitmap of indices, take given indices"
+  [^longs indices ^RoaringBitmap bit-map]
+    (let [return-vector (transient [])]
+      (hhl/doarr [[i x] indices]
+        (if (.contains bit-map i)
+          (conj! return-vector x)))
+      (persistent! return-vector)))
 
 (defn subset
-  "Given a long-array of indices, a hash map on which to filter the indices, and
-  a HashMap of levels that can be numerically indexed, return a subsetted
-  vector of values.
+  "Given a long-array of indices that correspond to levels,
+  a hash set on which to filter the indices, and HashMap of levels that can be
+  numerically indexed, return a subsetted vector of values.
 
   Ex: => (subset [0 1 2 0] (HashSet. [0 1]) [\"foo\" \"bar\" \"baz\"])
       [\"foo\" \"bar\" \"foo\"]"
   [^longs indices ^HashSet hashed-indices ^clojure.lang.PersistentVector levels]
     (let [return-vector (transient [])]
-      (hhl/doarr [i indices]
-        (if (.contains hashed-indices i)
-          (conj! return-vector (nth levels i))))
+      (hhl/doarr [x indices]
+        (if (.contains hashed-indices x)
+          (conj! return-vector (nth levels x))))
       (persistent! return-vector)))
 
 (defn filter-level-indices
