@@ -16,4 +16,4 @@
 (crit/with-progress-reporting (crit/quick-bench (ca/filter myarr100000 #(< % 5))))
 
 (println "Benchmarking standard filter...")
-(crit/with-progress-reporting (crit/quick-bench (vector (filter #(< % 5) card10))))
+(crit/with-progress-reporting (crit/quick-bench (vec (filter #(< % 5) card100000))))
