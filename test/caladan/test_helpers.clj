@@ -1,14 +1,5 @@
-(ns caladan.test-helpers
-  (:require [vertigo.core :as v]
-            [vertigo.structs :as s]))
+(ns caladan.test-helpers)
 
-(defn make-vert
-  ([sequence]
-    (make-vert s/int32 sequence))
-  ([type sequence]
-    (v/marshal-seq type sequence)))
-
-(defn make-vec
-  [^:s/int32 vert-arr]
-    (v/doreduce [x vert-arr] [return []]
-      (conj return x)))
+(defmacro int-vec
+  [& nums]
+    `(vector-of :int ~@nums))

@@ -1,14 +1,13 @@
 (ns caladan.test-arrays
   (:require [clojure.test :refer :all]
-            [caladan.arrays :as ca]
-            [caladan.test-helpers :as help])
+            [caladan.arrays :as ca])
   (:import (java.util HashSet)))
 
 (deftest test-arrays
   (testing "Creates categorical array"
     (are [in out] (let [cat-array (ca/make-categorical-array in)
                         levels (.levels cat-array)
-                        indices (help/make-vec (.indices cat-array))]
+                        indices (vec (.indices cat-array))]
                     (= levels (get out 0))
                     (= indices (get out 1)))
          [1 2 3] [[1 2 3][0 1 2]]))
