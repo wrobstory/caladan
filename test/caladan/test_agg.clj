@@ -40,7 +40,7 @@
                                (int 2) (bitmapper [2])}))
 
   (testing "Must subset and reindex levels and indices"
-    (are [in out] (let [[levels indices] (agg/subset-and-reindex (get in 0)  (get in 1) (get in 2))]
+    (are [in out] (let [[levels indices] (agg/cat-subset-and-reindex (get in 0)  (get in 1) (get in 2))]
                     (= levels (get out 0))
                     (= (vec indices) (get out 1)))
       [(int-array [1 2 0 1 3]) (bitmapper [0 1 4]) ["a" "b" "c" "d"]] [["b" "c" "d"] [0 1 2]]

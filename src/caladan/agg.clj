@@ -1,13 +1,14 @@
 (ns caladan.agg
   (:require [hiphip.int :as hhi]
-            [vertigo.structs :as s]
-            [vertigo.bytes :as b]
-            [vertigo.primitives :as p]
-            [vertigo.core :as v])
+            [hiphip.long :as hhl]
+            (caladan.arrays.CategoricalArray))
   (:import (java.util HashSet HashMap)
-           (org.roaringbitmap RoaringBitmap)))
+           (org.roaringbitmap RoaringBitmap)
+           [clojure.lang PersistentVector PersistentArrayMap]))
 
 (set! *warn-on-reflection* true)
+
+;; Categorical Array Handling
 
 (defn get-levels-and-indices
   "Perform a single pass across the vector, using a HashMap of idx:value
@@ -17,7 +18,7 @@
       [[1 2] (0 1 0 0)
       => (get-levels-and-indices [foo bar baz foo baz])
       [[foo bar baz] (0 1 2 0 2)]"
-  [^clojure.lang.PersistentVector arr-vec]
+  [^PersistentVector arr-vec]
     (let [level-map (HashMap.)
           levels (atom [])
           level-idx (atom 0)
@@ -46,7 +47,7 @@
          {1 2}
          (filter-level-indices #(= % foo) [foo bar baz]
          {0}"
-  [pred ^clojure.lang.PersistentVector levels]
+  [pred ^PersistentVector levels]
     (let [hashed-levels (HashSet.)
           level-filter (fn [hl item]
                           (if (pred (get item 1))
@@ -65,7 +66,7 @@
       [bar baz bar]
       => (subset [0 1 2 0 1] #{0} [foo bar baz])
       [foo foo]"
-  [^ints indices ^HashSet hashed-indices ^clojure.lang.PersistentVector levels]
+  [^ints indices ^HashSet hashed-indices ^PersistentVector levels]
     (let [return-vector (transient [])]
       (hhi/doarr [x indices]
         (if (.contains hashed-indices x)
@@ -89,7 +90,7 @@
                 (.put return-map x new-bitmap))))))
       return-map))
 
-(defn subset-and-reindex
+(defn cat-subset-and-reindex
   "Given an array of level-indices, an Bitmap index of row indices, and levels, use
   the index to generate new indices and levels. The following examples use
   generalized vector/set notation for byte-sequences and Bitmaps.
@@ -107,7 +108,7 @@
        [[a] [0 0 0]]
   Ex4: => (categorical-subset-and-reindex [1 1 0 2 1] {0 2} [a b c])
        [[b a] [0 1]]"
-  [^ints level-indices ^RoaringBitmap row-indices ^clojure.lang.PersistentVector levels]
+  [^ints level-indices ^RoaringBitmap row-indices ^PersistentVector levels]
     (let [return-indices (make-array Integer/TYPE (.getCardinality row-indices))
           return-levels (atom [])
           ^HashMap new-level-map (HashMap.)
@@ -127,3 +128,28 @@
               (swap! level-idx inc))
             (aset ^ints return-indices i (int map-entry)))))
       [@return-levels return-indices]))
+
+;; Numeric array Handling
+
+(defmacro get-NA
+  [input arr-type scalar-type setter]
+  `(let [na-map# (RoaringBitmap.)
+         values# (make-array ~arr-type (count ~input))]
+     (loop [in# ~input
+            idx# 0]
+       (when (seq in#)
+         (let [value# (first in#)
+               is-nan# (nil? value#)]
+           (if is-nan#
+             (.add na-map# idx#)
+             (~setter values# idx# (~scalar-type value#))))
+         (recur (rest in#) (inc idx#))))
+     [na-map# values#]))
+
+(defn get-int-NA
+  [input]
+    (get-NA input Integer/TYPE int hhi/aset))
+
+(defn get-long-NA
+  [input]
+    (get-NA input Long/TYPE long hhl/aset))

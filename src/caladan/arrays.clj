@@ -14,9 +14,9 @@
   (take [this length])
   (filter [this pred]))
 
-;; Categorical array: vertigo buffer of int32 indices (accepts extremely large cardinality)
+;; Categorical array: primitive integer indices (accepts extremely large cardinality)
 ;; Levels are a simple Clojure vector
-(deftype CategoricalArray [levels ^:s/int32 indices]
+(deftype CategoricalArray [levels ^longs indices]
   Array
   (take [this n]
     "Returns vector for the first n items in the array. Currently raises if
@@ -35,6 +35,7 @@
     returns true. Pred should be free of side-effects"
     (let [filtered-indices (filter-level-indices pred (.levels this))]
       (subset (.indices this) filtered-indices (.levels this)))))
+
 
 (defmethod clojure.core/print-method caladan.arrays.CategoricalArray
   [^caladan.arrays.CategoricalArray arr ^java.io.Writer w]
