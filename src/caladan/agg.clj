@@ -43,9 +43,9 @@
   "Given a predicate and a set of levels, filter the level values and return
   a HashSet of the level indices
 
-  Ex: => (filter-level-indices #(> % 1) [1 2 3])
+  Ex: => (filter-level-indices (> % 1) [1 2 3])
          {1 2}
-         (filter-level-indices #(= % foo) [foo bar baz]
+         (filter-level-indices (= % foo) [foo bar baz]
          {0}"
   [pred ^PersistentVector levels]
     (let [hashed-levels (HashSet.)
@@ -62,9 +62,9 @@
   "Given a int-array of level indices, a HashSet of hashed-indices, and the level vector
   , return a vector of subsetted values.
 
-  Ex: => (subset [0 1 2 0 1] #{1 2} [foo bar baz])
+  Ex: => (subset [0 1 2 0 1] {1 2} [foo bar baz])
       [bar baz bar]
-      => (subset [0 1 2 0 1] #{0} [foo bar baz])
+      => (subset [0 1 2 0 1] {0} [foo bar baz])
       [foo foo]"
   [^ints indices ^HashSet hashed-indices ^PersistentVector levels]
     (let [return-vector (transient [])]
@@ -77,7 +77,7 @@
   "Group a given array of long indices and return a HashMap of {index: Bitmap}
 
   Ex: => (group-indices [0 1 0 1 2 1])
-     {0 #<RoaringBitmap {0,2}>, 1 #<RoaringBitmap {1,3,5}>, 2 #<RoaringBitmap {4}>}"
+     {0 <RoaringBitmap {0,2}>, 1 <RoaringBitmap {1,3,5}>, 2 <RoaringBitmap {4}>}"
   [^ints indices]
     (let [^HashMap return-map (HashMap.)]
       (hhi/doarr [[i x] indices]
@@ -131,26 +131,69 @@
 
 ;; Numeric array Handling
 
-(defmacro get-NA
+;; Helper funcs
+(defmacro slicer
+  "Create an array slicer for a given type"
+  [arr slice arr-type iterator setter]
+    `(let [arr-len# (count ~arr)
+           n# (if (> ~slice arr-len#) arr-len# ~slice)
+           new-arr# (make-array ~arr-type n#)]
+       (~iterator [[i# x#] ~arr :range [0 n#]]
+         (~setter new-arr# i# x#))
+       new-arr#))
+
+(defn int-slicer
+  "Slice primitive integer arrays for given length"
+  [arr length]
+    (slicer arr length Integer/TYPE hhi/doarr hhi/aset))
+
+(defn long-slicer
+  "Slice primitive long arrays for given length"
+  [arr length]
+    (slicer arr length Long/TYPE hhl/doarr hhl/aset))
+
+(defn build-vals-and-index
+  "Given a vector input, an array generator (Ex: int-array), and a scalar-type,
+  Return a bitmap indicating value positions, a primitive array of values,
+  and total array length"
   [input arr-gen scalar-type]
-  `(let [na-map# (RoaringBitmap.)
-         arr-length# (count ~input)
-         values# (transient [])]
-     (loop [in# ~input
-            idx# 0]
-       (when (seq in#)
-         (let [value# (first in#)
-               is-nan# (nil? value#)]
-           (if is-nan#
-             (.add na-map# idx#)
-             (conj! values# (~scalar-type value#))))
-         (recur (rest in#) (inc idx#))))
-     [na-map# (~arr-gen (persistent! values#)) arr-length#]))
+    (let [val-idx (RoaringBitmap.)
+          arr-length (count input)
+          values (transient [])]
+      (loop [in input
+             idx 0]
+        (when (seq in)
+          (let [value (first in)
+                is-nan (nil? value)]
+            (when-not is-nan
+              (.add val-idx idx)
+              (conj! values (scalar-type value))))
+          (recur (rest in) (inc idx))))
+      [val-idx (arr-gen (persistent! values)) arr-length]))
 
-(defn get-int-NA
-  [input]
-    (get-NA input int-array int))
+; (defn subset-vals-and-NA
+;   "Given existing NA index and primitive array, subset based on given length"
+;   [^RoaringBitmap val-idx values length]
+;     (let [new-val-idx (RoaringBitmap.)
+;           iterator (.getIntIterator val-idx)
+;           n length]
+;       (loop [idx 0
+;              value (.next iterator)]
+;         (cond
+;           (= value n) (do
+;                         (.add new-val-idx value)
+;                         [new-val-idx (int-slicer values idx) n])
+;           (> value n) [new-val-idx (int-slicer values idx) n]
+;           (< value n) (do
+;                         (.add new-val-idx value)
+;                         (recur (inc idx) (.next iterator)))))))
 
-(defn get-long-NA
+(defn get-int-arr-comp
+  "Get components for int array"
   [input]
-    (get-NA input long-array long))
+    (build-vals-and-index input int-array int))
+
+(defn get-long-arr-comp
+  "Get components for long array"
+  [input]
+    (build-vals-and-index input long-array long))

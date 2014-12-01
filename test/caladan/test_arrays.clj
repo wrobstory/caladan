@@ -12,16 +12,16 @@
                                    (= indices (get out 1))]))
          [1 2 3] [[1 2 3][0 1 2]]))
 
-  (testing "Takes values from categorical array"
+  (testing "Slices values from categorical array"
     (are [in out] (let [cat-array (ca/make-categorical-array in)
-                        taken (ca/take cat-array (get out 0))]
+                        taken (ca/slice cat-array (get out 0))]
                     (= taken (get out 1)))
          [1 2 3] [1 [1]]
          [1.0 5.0 3.0 4.0] [3 [1.0 5.0 3.0]]))
 
   (testing "filters indexed array"
     (are [in out] (let [cat-array (ca/make-categorical-array in)
-                        filtered (ca/filter cat-array (get out 0))]
+                        filtered (ca/select cat-array (get out 0))]
                     (= filtered (get out 1)))
          [1 2 3 1 1 2] [#(<= % 2) [1 2 1 1 2]]
          [true false true true] [#(true? %) [true true true]]

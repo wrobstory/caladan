@@ -1,24 +1,22 @@
 (ns caladan.arrays
-  (:refer-clojure :exclude [filter take])
   (:require [hiphip.int :as hhi]
-            [caladan.agg :refer :all]
-            [vertigo.structs :as s]
-            [vertigo.core :as v])
-  (:import (java.io.Writer)))
+            [caladan.agg :refer :all])
+  (:import (java.io.Writer)
+           (org.roaringbitmap RoaringBitmap)))
 
 (set! *warn-on-reflection* true)
 
 ;; Homogeneous Arrays, either of a given type or a categorical array with
 ;; int32 indices and string levels
 (defprotocol Array
-  (take [this length])
-  (filter [this pred]))
+  (slice [this length])
+  (select [this pred]))
 
 ;; Categorical array: primitive integer indices (accepts extremely large cardinality)
 ;; Levels are a simple Clojure vector
 (deftype CategoricalArray [levels ^longs indices]
   Array
-  (take [this n]
+  (slice [this n]
     "Returns vector for the first n items in the array. Currently raises if
     more than n items in array."
     (let [return-vector (transient [])
@@ -30,7 +28,7 @@
         (conj! return-vector (get levels x)))
       (vec (persistent! return-vector))))
 
-  (filter [this pred]
+  (select [this pred]
     "Returns a vector of the items in the array for which (pred item)
     returns true. Pred should be free of side-effects"
     (let [filtered-indices (filter-level-indices pred (.levels this))]
@@ -42,10 +40,20 @@
     (let [^longs indices (.indices arr)
           levels (.levels arr)]
       (.write w (clojure.string/join "\n" [(str "Cardinality: " (count levels))
-                                           (str "Take 5: " (take arr 5))]))))
+                                           (str "Take 5: " (slice arr 5))]))))
 
 (defn make-categorical-array
   "Given a vector, return a caladan CategoricalArray"
   [^clojure.lang.PersistentVector arr-vec]
     (let [levels-indices (get-levels-and-indices arr-vec)]
       (CategoricalArray. (first levels-indices) (second levels-indices))))
+
+;; Numeric Arrays. primitive values, NAs kept in bit-index.
+
+; (deftype IntegerArray [values na-index length]
+;   Array
+;   (slice [this n]
+;     (let [na-idx (RoaringBitmap.)
+;           temp-vec
+
+

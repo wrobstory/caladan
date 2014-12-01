@@ -48,11 +48,29 @@
       [(int-array [0 1 0 0 2]) (bitmapper [0 2 3]) ["a" "b" "c"]] [["a"] [0 0 0]]
       [(int-array [1 1 0 2 1]) (bitmapper [0 2]) ["a" "b" "c"]] [["b" "a"] [0 1]]))
 
-  (testing "Must create values and NA index"
+  (testing "Must create int values and NA index"
     (are [in out] (let [coll []
-                        [na-idx values] (agg/get-int-NA in)]
+                        [na-idx values length] (agg/get-int-arr-comp in)]
                     (every? true? [(= na-idx (get out 0)),
-                                   (= (vec values) (get out 1))]))
-      [1 2 3] [(bitmapper []) (vectof :int 1 2 3)]
-      [1 2 nil 3] [(bitmapper [2]) (vectof :int 1 2 3)]))
+                                   (= (vec values) (get out 1))
+                                   (= length (get out 2))]))
+      [1 2 3] [(bitmapper [0 1 2]) (vectof :int 1 2 3) 3]
+      [1 2 nil 3] [(bitmapper [0 1 3]) (vectof :int 1 2 3) 4]
+      [1 nil 2 nil nil 4] [(bitmapper [0 2 5]) (vectof :int 1 2 4) 6]))
+
+  (testing "Must create long values and NA index"
+    (are [in out] (let [coll []
+                        [na-idx values length] (agg/get-long-arr-comp in)]
+                    (every? true? [(= na-idx (get out 0)),
+                                   (= (vec values) (get out 1))
+                                   (= length (get out 2))]))
+      [nil nil 1] [(bitmapper [2]) (vectof :long 1) 3]
+      [1 2 nil 3] [(bitmapper [0 1 3]) (vectof :long 1 2 3) 4]))
+
+  (testing "Must slice arrays"
+    (are [in out] (= (vec ((:slicer in) (:arr in) (:length in))) out)
+      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 2} (vectof :int 1 2)
+      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 0} []
+      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 10} (vectof :int 1 2 3 4)
+      {:slicer agg/long-slicer :arr (long-array [1 2 3 4]) :length 3} [1 2 3]))
   )
