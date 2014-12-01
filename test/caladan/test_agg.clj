@@ -7,9 +7,10 @@
 
 (deftest test-agg
   (testing "Must get-levels-and-indices"
-    (are [in out] (let [[levels indices] (agg/get-levels-and-indices in)]
-                    (= levels (get out 0))
-                    (= (vec indices) (get out 1)))
+    (are [in out] (let [coll []
+                        [levels indices] (agg/get-levels-and-indices in)]
+                    (every? true? [(= levels (get out 0))
+                                   (= (vec indices) (get out 1))]))
       [1 2 3] [[1 2 3][0 1 2]]
       [true false true true] [[true false][0 1 0 0]]
       ["foo" "bar" "baz" "foo" "foo"] [["foo" "bar" "baz"][0 1 2 0 0]]
@@ -41,9 +42,17 @@
 
   (testing "Must subset and reindex levels and indices"
     (are [in out] (let [[levels indices] (agg/cat-subset-and-reindex (get in 0)  (get in 1) (get in 2))]
-                    (= levels (get out 0))
-                    (= (vec indices) (get out 1)))
+                    (every? true? [(= levels (get out 0))
+                                   (= (vec indices) (get out 1))]))
       [(int-array [1 2 0 1 3]) (bitmapper [0 1 4]) ["a" "b" "c" "d"]] [["b" "c" "d"] [0 1 2]]
       [(int-array [0 1 0 0 2]) (bitmapper [0 2 3]) ["a" "b" "c"]] [["a"] [0 0 0]]
       [(int-array [1 1 0 2 1]) (bitmapper [0 2]) ["a" "b" "c"]] [["b" "a"] [0 1]]))
+
+  (testing "Must create values and NA index"
+    (are [in out] (let [coll []
+                        [na-idx values] (agg/get-int-NA in)]
+                    (every? true? [(= na-idx (get out 0)),
+                                   (= (vec values) (get out 1))]))
+      [1 2 3] [(bitmapper []) (vectof :int 1 2 3)]
+      [1 2 nil 3] [(bitmapper [2]) (vectof :int 1 2 3)]))
   )

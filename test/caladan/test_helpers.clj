@@ -13,3 +13,7 @@
       (doseq [x sequence]
         (.add bitmap x))
       bitmap))
+
+(defmacro vectof
+  [type-key & body]
+    `(conj (vector-of ~type-key) ~@body))

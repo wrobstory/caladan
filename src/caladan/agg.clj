@@ -132,9 +132,10 @@
 ;; Numeric array Handling
 
 (defmacro get-NA
-  [input arr-type scalar-type setter]
+  [input arr-gen scalar-type]
   `(let [na-map# (RoaringBitmap.)
-         values# (make-array ~arr-type (count ~input))]
+         arr-length# (count ~input)
+         values# (transient [])]
      (loop [in# ~input
             idx# 0]
        (when (seq in#)
@@ -142,14 +143,14 @@
                is-nan# (nil? value#)]
            (if is-nan#
              (.add na-map# idx#)
-             (~setter values# idx# (~scalar-type value#))))
+             (conj! values# (~scalar-type value#))))
          (recur (rest in#) (inc idx#))))
-     [na-map# values#]))
+     [na-map# (~arr-gen (persistent! values#)) arr-length#]))
 
 (defn get-int-NA
   [input]
-    (get-NA input Integer/TYPE int hhi/aset))
+    (get-NA input int-array int))
 
 (defn get-long-NA
   [input]
-    (get-NA input Long/TYPE long hhl/aset))
+    (get-NA input long-array long))

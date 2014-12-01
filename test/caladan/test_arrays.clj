@@ -8,8 +8,8 @@
     (are [in out] (let [cat-array (ca/make-categorical-array in)
                         levels (.levels cat-array)
                         indices (vec (.indices cat-array))]
-                    (= levels (get out 0))
-                    (= indices (get out 1)))
+                    (every? true? [(= levels (get out 0))
+                                   (= indices (get out 1))]))
          [1 2 3] [[1 2 3][0 1 2]]))
 
   (testing "Takes values from categorical array"
