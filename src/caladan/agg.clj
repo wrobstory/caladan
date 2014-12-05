@@ -171,22 +171,24 @@
           (recur (rest in) (inc idx))))
       [val-idx (arr-gen (persistent! values)) arr-length]))
 
-; (defn subset-vals-and-NA
-;   "Given existing NA index and primitive array, subset based on given length"
-;   [^RoaringBitmap val-idx values length]
-;     (let [new-val-idx (RoaringBitmap.)
-;           iterator (.getIntIterator val-idx)
-;           n length]
-;       (loop [idx 0
-;              value (.next iterator)]
-;         (cond
-;           (= value n) (do
-;                         (.add new-val-idx value)
-;                         [new-val-idx (int-slicer values idx) n])
-;           (> value n) [new-val-idx (int-slicer values idx) n]
-;           (< value n) (do
-;                         (.add new-val-idx value)
-;                         (recur (inc idx) (.next iterator)))))))
+(defn subset-vals-and-NA
+  "Given existing NA index and primitive array, subset based on given length"
+  [^RoaringBitmap val-idx values length]
+    (let [new-val-idx (RoaringBitmap.)
+          iterator (.getIntIterator val-idx)
+          card (.getCardinality val-idx)
+          decremented (- length 1)
+          n (if (< card decremented) card decremented)]
+      (loop [idx 1
+             value (.next iterator)]
+        (cond
+          (= value n) (do
+                        (.add new-val-idx value)
+                        [new-val-idx (vec (int-slicer values idx)) length])
+          (> value n) [new-val-idx (vec (int-slicer values (- idx 1))) length]
+          (< value n) (do
+                        (.add new-val-idx value)
+                        (recur (inc idx) (.next iterator)))))))
 
 (defn get-int-arr-comp
   "Get components for int array"
