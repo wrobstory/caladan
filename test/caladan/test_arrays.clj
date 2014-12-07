@@ -14,7 +14,7 @@
 
   (testing "Slices values from categorical array"
     (are [in out] (let [cat-array (ca/make-categorical-array in)
-                        taken (ca/slice cat-array (get out 0))]
+                        taken (ca/get-vector cat-array (get out 0))]
                     (= taken (get out 1)))
          [1 2 3] [1 [1]]
          [1.0 5.0 3.0 4.0] [3 [1.0 5.0 3.0]]))

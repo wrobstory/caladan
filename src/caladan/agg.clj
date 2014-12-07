@@ -1,7 +1,6 @@
 (ns caladan.agg
   (:require [hiphip.int :as hhi]
-            [hiphip.long :as hhl]
-            (caladan.arrays.CategoricalArray))
+            [hiphip.long :as hhl])
   (:import (java.util HashSet HashMap)
            (org.roaringbitmap RoaringBitmap)
            [clojure.lang PersistentVector PersistentArrayMap]))
@@ -169,26 +168,7 @@
               (.add val-idx idx)
               (conj! values (scalar-type value))))
           (recur (rest in) (inc idx))))
-      [val-idx (arr-gen (persistent! values)) arr-length]))
-
-(defn subset-vals-and-NA
-  "Given existing NA index and primitive array, subset based on given length"
-  [^RoaringBitmap val-idx values length]
-    (let [new-val-idx (RoaringBitmap.)
-          iterator (.getIntIterator val-idx)
-          card (.getCardinality val-idx)
-          decremented (- length 1)
-          n (if (< card decremented) card decremented)]
-      (loop [idx 1
-             value (.next iterator)]
-        (cond
-          (= value n) (do
-                        (.add new-val-idx value)
-                        [new-val-idx (vec (int-slicer values idx)) length])
-          (> value n) [new-val-idx (vec (int-slicer values (- idx 1))) length]
-          (< value n) (do
-                        (.add new-val-idx value)
-                        (recur (inc idx) (.next iterator)))))))
+      [(arr-gen (persistent! values)) val-idx arr-length]))
 
 (defn get-int-arr-comp
   "Get components for int array"
@@ -199,3 +179,22 @@
   "Get components for long array"
   [input]
     (build-vals-and-index input long-array long))
+
+(defn take-num-arr
+  "Given existing NA index and primitive array, subset based on given length"
+  [^RoaringBitmap val-idx values slicer length]
+    (let [new-val-idx (RoaringBitmap.)
+          iterator (.getIntIterator val-idx)
+          card (.getCardinality val-idx)
+          decremented (- length 1)
+          n (if (< card decremented) card decremented)]
+      (loop [idx 1
+             value (.next iterator)]
+        (cond
+          (= value n) (do
+                        (.add new-val-idx value)
+                        [new-val-idx (slicer values idx) length])
+          (> value n) [new-val-idx (slicer values (- idx 1)) length]
+          (< value n) (do
+                        (.add new-val-idx value)
+                        (recur (inc idx) (.next iterator)))))))

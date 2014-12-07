@@ -50,24 +50,31 @@
 
   (testing "Must create int values and NA index"
     (are [in out] (let [coll []
-                        [na-idx values length] (agg/get-int-arr-comp in)]
+                       [values na-idx length] (agg/get-int-arr-comp in)]
                     (every? true? [(= na-idx (get out 0)),
                                    (= (vec values) (get out 1))
                                    (= length (get out 2))]))
-      [1 2 3] [(bitmapper [0 1 2]) (vectof :int 1 2 3) 3]
-      [1 2 nil 3] [(bitmapper [0 1 3]) (vectof :int 1 2 3) 4]
-      [1 nil 2 nil nil 4] [(bitmapper [0 2 5]) (vectof :int 1 2 4) 6]))
+      [1 2 3] [(vectof :int 1 2 3) (bitmapper [0 1 2]) 3]
+      [1 2 nil 3] [(vectof :int 1 2 3) (bitmapper [0 1 3]) 4]
+      [1 nil 2 nil nil 4] [(vectof :int 1 2 4) (bitmapper [0 2 5]) 6]))
 
   (testing "Must create long values and NA index"
     (are [in out] (let [coll []
-                        [na-idx values length] (agg/get-long-arr-comp in)]
+                       [values na-idx length] (agg/get-long-arr-comp in)]
                     (every? true? [(= na-idx (get out 0)),
                                    (= (vec values) (get out 1))
                                    (= length (get out 2))]))
-      [nil nil 1] [(bitmapper [2]) (vectof :long 1) 3]
-      [1 2 nil 3] [(bitmapper [0 1 3]) (vectof :long 1 2 3) 4]))
+      [nil nil 1] [(vectof :long 1) (bitmapper [2]) 3]
+      [1 2 nil 3] [(vectof :long 1 2 3) (bitmapper [0 1 3]) 4]))
 
   (testing "Must slice arrays"
+    (are [in out] (= (vec ((:slicer in) (:arr in) (:length in))) out)
+      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 2} (vectof :int 1 2)
+      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 0} []
+      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 10} (vectof :int 1 2 3 4)
+      {:slicer agg/long-slicer :arr (long-array [1 2 3 4]) :length 3} [1 2 3]))
+
+  (testing "Must subset numeric arrays"
     (are [in out] (= (vec ((:slicer in) (:arr in) (:length in))) out)
       {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 2} (vectof :int 1 2)
       {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 0} []
