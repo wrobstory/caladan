@@ -22,14 +22,17 @@
       [#(= (first %) \f) ["foo" "bar" "faz"]] (HashSet. (int-vec 0 2))
       [#(true? %) [true false]] (HashSet. (int-vec 0))))
 
-  (testing "Must subset an array of indices given HashSet and Levels"
-    (are [in out] (= (agg/subset (get in 0)  (get in 1) (get in 2)) out)
-      [(int-array []) (HashSet. (int-vec)) []] []
-      [(int-array [0]) (HashSet. (int-vec 0)) ["foo"]] ["foo"]
-      [(int-array [0 1]) (HashSet. (int-vec 0 1)) ["foo" "bar"]] ["foo" "bar"]
-      [(int-array [0 1 0 2]) (HashSet. (int-vec 0 2)) [1 2 3]] [1 1 3]
-      [(int-array [0 0 1]) (HashSet. (int-vec 0)) [true false]] [true true]
-      [(int-array [2 1 3 2]) (HashSet. (int-vec 1 2 3)) [1.0 5.0 10.0 20.0]] [10.0 5.0 20.0 10.0]))
+  (testing "Must perform subset given hash set of levels"
+    (are [in out] (let [[levels indices] (agg/cat-subset-on-levels (get in 0)  (get in 1) (get in 2))]
+                    (every? true? [(= levels (get out 0))
+                                   (= (vec indices) (get out 1))]))
+      [(int-array []) (HashSet. (int-vec)) []] [[] []]
+      [(int-array [0]) (HashSet. (int-vec 0)) ["foo"]] [["foo"] [0]]
+      [(int-array [0 1]) (HashSet. (int-vec 0 1)) ["foo" "bar"]] [["foo" "bar"] [0 1]]
+      [(int-array [0 1 0 2]) (HashSet. (int-vec 0 2)) [1 2 3]] [[1 3] [0 0 1]]
+      [(int-array [0 0 1]) (HashSet. (int-vec 0)) [true false]] [[true] [0 0]]
+      [(int-array [2 1 3 2]) (HashSet. (int-vec 1 2 3)) [1.0 5.0 10.0 20.0]] [[10.0 5.0 20.0] [0 1 2 0]]
+      [(int-array [0 2 1 0]) (HashSet. (int-vec 1 2)) ["a" "b" "c"]] [["c" "b"] [0 1]]))
 
   (testing "Must group indices"
     (are [in out] (= (agg/group-indices in) out)
@@ -41,28 +44,28 @@
                                (int 2) (bitmapper [2])}))
 
   (testing "Must subset and reindex levels and indices"
-    (are [in out] (let [[levels indices] (agg/cat-subset-and-reindex (get in 0)  (get in 1) (get in 2))]
+    (are [in out] (let [[levels indices] (agg/cat-subset-on-rows (get in 0)  (get in 1) (get in 2))]
                     (every? true? [(= levels (get out 0))
                                    (= (vec indices) (get out 1))]))
       [(int-array [1 2 0 1 3]) (bitmapper [0 1 4]) ["a" "b" "c" "d"]] [["b" "c" "d"] [0 1 2]]
       [(int-array [0 1 0 0 2]) (bitmapper [0 2 3]) ["a" "b" "c"]] [["a"] [0 0 0]]
       [(int-array [1 1 0 2 1]) (bitmapper [0 2]) ["a" "b" "c"]] [["b" "a"] [0 1]]))
 
-  (testing "Must create int values and NA index"
+  (testing "Must create int values and value index"
     (are [in out] (let [coll []
                        [values na-idx length] (agg/get-int-arr-comp in)]
-                    (every? true? [(= na-idx (get out 0)),
-                                   (= (vec values) (get out 1))
+                    (every? true? [(= (vec values)  (get out 0)),
+                                   (= na-idx (get out 1))
                                    (= length (get out 2))]))
       [1 2 3] [(vectof :int 1 2 3) (bitmapper [0 1 2]) 3]
       [1 2 nil 3] [(vectof :int 1 2 3) (bitmapper [0 1 3]) 4]
       [1 nil 2 nil nil 4] [(vectof :int 1 2 4) (bitmapper [0 2 5]) 6]))
 
-  (testing "Must create long values and NA index"
+  (testing "Must create long values and value index"
     (are [in out] (let [coll []
                        [values na-idx length] (agg/get-long-arr-comp in)]
-                    (every? true? [(= na-idx (get out 0)),
-                                   (= (vec values) (get out 1))
+                    (every? true? [(= (vec values) (get out 0)),
+                                   (= na-idx (get out 1))
                                    (= length (get out 2))]))
       [nil nil 1] [(vectof :long 1) (bitmapper [2]) 3]
       [1 2 nil 3] [(vectof :long 1 2 3) (bitmapper [0 1 3]) 4]))

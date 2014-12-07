@@ -33,8 +33,9 @@
   (select [this pred]
     "Returns a vector of the items in the array for which (pred item)
     returns true. Pred should be free of side-effects"
-    (let [filtered-indices (filter-level-indices pred (.levels this))]
-      (subset (.indices this) filtered-indices (.levels this)))))
+    (let [filtered-indices (filter-level-indices pred (.levels this))
+          [levels indices] (cat-subset-on-levels (.indices this) filtered-indices (.levels this))]
+      (CategoricalArray. levels indices (hhi/alength indices)))))
 
 
 (defmethod clojure.core/print-method caladan.arrays.CategoricalArray

@@ -57,23 +57,8 @@
       (reduce level-filter hashed-levels (map-indexed vector levels))
       hashed-levels))
 
-(defn subset
-  "Given a int-array of level indices, a HashSet of hashed-indices, and the level vector
-  , return a vector of subsetted values.
-
-  Ex: => (subset [0 1 2 0 1] {1 2} [foo bar baz])
-      [bar baz bar]
-      => (subset [0 1 2 0 1] {0} [foo bar baz])
-      [foo foo]"
-  [^ints indices ^HashSet hashed-indices ^PersistentVector levels]
-    (let [return-vector (transient [])]
-      (hhi/doarr [x indices]
-        (if (.contains hashed-indices x)
-          (conj! return-vector (nth levels x))))
-      (persistent! return-vector)))
-
 (defn group-indices
-  "Group a given array of long indices and return a HashMap of {index: Bitmap}
+  "Group a given array of int indices and return a HashMap of {index: Bitmap}
 
   Ex: => (group-indices [0 1 0 1 2 1])
      {0 <RoaringBitmap {0,2}>, 1 <RoaringBitmap {1,3,5}>, 2 <RoaringBitmap {4}>}"
@@ -89,10 +74,39 @@
                 (.put return-map x new-bitmap))))))
       return-map))
 
-(defn cat-subset-and-reindex
+(defn cat-subset-on-levels
+  "Given a int-array of level indices, a HashSet of level-indices, and the level vector,
+  return new levels, indices, and length. This subsetter is essentially
+  saying 'Give me only the levels in this HashSet'
+
+  Ex: => (subset [0 1 2 0 1] {1 2} [foo bar baz])
+      [[bar baz] [0 1 0]]
+      => (subset [0 1 2 0 1] {0} [foo bar baz])
+      [[foo] [0 0]]"
+  [^ints indices ^HashSet hashed-indices ^PersistentVector levels]
+    (let [return-indices (transient [])
+          return-levels (transient [])
+          ^HashMap new-level-map (HashMap.)
+          level-idx (atom (int 0))]
+      (hhi/doarr [x indices]
+        (if (.contains hashed-indices x)
+          (let [level-value (nth levels x)
+                map-entry (.get new-level-map level-value)
+                int-level-idx @level-idx]
+            (if-not map-entry
+              (do
+                (.put new-level-map level-value int-level-idx)
+                (conj! return-indices int-level-idx)
+                (conj! return-levels level-value)
+                (swap! level-idx inc))
+              (conj! return-indices map-entry)))))
+      [(persistent! return-levels) (int-array (persistent! return-indices))]))
+
+(defn cat-subset-on-rows
   "Given an array of level-indices, an Bitmap index of row indices, and levels, use
-  the index to generate new indices and levels. The following examples use
-  generalized vector/set notation for byte-sequences and Bitmaps.
+  the index to generate new indices and levels. This subsetter is essentially
+  saying 'Give me only the rows in this bit-index'. The following examples use
+  generalized vector/set notation for primitive-arrays and Bitmaps.
 
   Ex: Given levels [foo, bar, baz];
       Indexes for these levels: [0 1 0 2 1 2], which represents the array [foo bar foo baz bar baz];
