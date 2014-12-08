@@ -10,5 +10,5 @@
                  [org.roaringbitmap/RoaringBitmap "0.4.6"]
                  [org.clojure/test.check "0.5.9"]
                  [criterium "0.4.3"]
-                 [vertigo "0.1.3"]]
+                 [com.taoensso/timbre "3.3.1"]]
   :plugins [[lein-exec "0.3.4"]])

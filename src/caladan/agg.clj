@@ -212,3 +212,26 @@
           (< value n) (do
                         (.add new-val-idx value)
                         (recur (inc idx) (.next iterator)))))))
+
+(defmacro filter-num-arr
+  "Filter numerical array values for given predicate. Return bitmap of indices and
+  filtered values. This will filter out all NA values"
+  [val-idx values pred do-iter setter slicer arr-type]
+    `(let [meta-bitmap# ~(with-meta val-idx {:tag 'RoaringBitmap})
+           return-indices# (RoaringBitmap.)
+           card# (.getCardinality meta-bitmap#)
+           return-array# (make-array ~arr-type card#)
+           iterator# (.getIntIterator meta-bitmap#)
+           val-count# (atom 0)]
+       (~do-iter [x# ~values
+                  :let [iter-val# (.next iterator#)]]
+         (when (~pred x#)
+           (.add return-indices# iter-val#)
+           (~setter return-array# @val-count# x#)
+           (swap! val-count# inc)))
+       [(~slicer return-array# 0 @val-count#) return-indices#]))
+
+(defn filter-int-arr
+  "Filter integer array"
+  [^RoaringBitmap val-idx ^ints foobars pred]
+    (filter-num-arr val-idx foobars pred hhi/doarr hhi/aset int-slicer Integer/TYPE))

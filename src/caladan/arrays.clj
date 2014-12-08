@@ -1,10 +1,11 @@
 (ns caladan.arrays
   (:require [hiphip.int :as hhi]
             [hiphip.long :as hhl]
+            [hiphip.float :as hhf]
             [caladan.agg :refer :all])
   (:import (java.io.Writer)
            (org.roaringbitmap RoaringBitmap))
-  (:refer-clojure :exclude [vec]))
+  (:refer-clojure :exclude [vec count]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,6 +14,11 @@
 (defprotocol Array
   (get-vector [this n])
   (select [this pred]))
+
+(defprotocol NumericArray
+  (sum [this])
+  (mean [this])
+  (count [this]))
 
 ;; Categorical array: primitive integer indices (accepts extremely large cardinality)
 ;; Levels are a simple Clojure vector
@@ -31,7 +37,7 @@
       (clojure.core/vec (persistent! return-vector))))
 
   (select [this pred]
-    "Returns a vector of the items in the array for which (pred item)
+    "Returns a new categorical array of the items in the array for which (pred item)
     returns true. Pred should be free of side-effects"
     (let [filtered-indices (filter-level-indices pred (.levels this))
           [levels indices] (cat-subset-on-levels (.indices this) filtered-indices (.levels this))]
@@ -56,13 +62,37 @@
 ;; Numeric Arrays. primitive values, value indices kept in bit-index.
 
 (deftype IntegerArray [^ints values ^RoaringBitmap val-idx length]
-  Array)
+
+  Array
+  NumericArray
+
+  (sum [this]
+    (hhi/asum (.values this)))
+  (mean [this]
+    (hhi/amean (.values this)))
+  (select [this pred]
+    "Returns a new IntegerArray of the items in the array for which (pred item)
+    returns true. Pred should be free of side-effects. Will filter all NA values"
+    (let [[values indices] (filter-int-arr (.val-idx this) (.values this) pred)]
+      (IntegerArray. values (RoaringBitmap.) (hhi/alength values)))))
 
 (deftype LongArray [^longs values ^RoaringBitmap val-idx length]
-  Array)
+  Array
+  NumericArray
+
+  (sum [this]
+    (hhl/asum (.values this)))
+  (mean [this]
+    (hhl/amean (.values this))))
 
 (deftype FloatArray [^floats values ^RoaringBitmap val-idx length]
-  Array)
+  Array
+  NumericArray
+
+  (sum [this]
+    (hhf/asum (.values this)))
+  (mean [this]
+    (hhf/amean (.values this))))
 
 (defn take-int-arr
   [n ^IntegerArray int-arr]
