@@ -52,20 +52,18 @@
       [(int-array [1 1 0 2 1]) (bitmapper [0 2]) ["a" "b" "c"]] [["b" "a"] [0 1]]))
 
   (testing "Must create int values and value index"
-    (are [in out] (let [coll []
-                       [values na-idx length] (agg/get-int-arr-comp in)]
+    (are [in out] (let [[values val-idx length] (agg/get-int-arr-comp in)]
                     (every? true? [(= (vec values)  (get out 0)),
-                                   (= na-idx (get out 1))
+                                   (= val-idx (get out 1))
                                    (= length (get out 2))]))
       [1 2 3] [(vectof :int 1 2 3) (bitmapper [0 1 2]) 3]
       [1 2 nil 3] [(vectof :int 1 2 3) (bitmapper [0 1 3]) 4]
       [1 nil 2 nil nil 4] [(vectof :int 1 2 4) (bitmapper [0 2 5]) 6]))
 
   (testing "Must create long values and value index"
-    (are [in out] (let [coll []
-                       [values na-idx length] (agg/get-long-arr-comp in)]
+    (are [in out] (let [[values val-idx length] (agg/get-long-arr-comp in)]
                     (every? true? [(= (vec values) (get out 0)),
-                                   (= na-idx (get out 1))
+                                   (= val-idx (get out 1))
                                    (= length (get out 2))]))
       [nil nil 1] [(vectof :long 1) (bitmapper [2]) 3]
       [1 2 nil 3] [(vectof :long 1 2 3) (bitmapper [0 1 3]) 4]))
@@ -77,10 +75,19 @@
       {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 10} (vectof :int 1 2 3 4)
       {:slicer agg/long-slicer :arr (long-array [1 2 3 4]) :length 3} [1 2 3]))
 
-  (testing "Must subset numeric arrays"
-    (are [in out] (= (vec ((:slicer in) (:arr in) (:length in))) out)
-      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 2} (vectof :int 1 2)
-      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 0} []
-      {:slicer agg/int-slicer :arr (int-array [1 2 3 4]) :length 10} (vectof :int 1 2 3 4)
-      {:slicer agg/long-slicer :arr (long-array [1 2 3 4]) :length 3} [1 2 3]))
-  )
+  (testing "Must take numeric arrays"
+    (are [in out] (let [[values val-idx length] (agg/take-num-arr (:vals in) (:val-idx in) (:slicer in) (:n in))]
+                    (every? true? [(= (vec values) (:vals out)),
+                                   (= val-idx (:val-idx out))
+                                   (= length (:l out))]))
+
+      {:vals (int-array [1 2 4]) :val-idx (bitmapper [0 1 3]) :slicer agg/int-slicer :n 3}
+      {:vals [1 2] :val-idx (bitmapper [0 1]) :l 3}
+
+      {:vals (long-array [0 1 2 5 6]) :val-idx (bitmapper [0 1 2 5 6]) :slicer agg/long-slicer :n 5}
+      {:vals [0 1 2] :val-idx (bitmapper [0 1 2]) :l 5}
+
+      {:vals (long-array [4 9 10 20 40]) :val-idx (bitmapper [0 2 4 6 8]) :slicer agg/long-slicer :n 6}
+      {:vals [4 9 10] :val-idx (bitmapper [0 2 4]) :l 6}
+      ))
+)

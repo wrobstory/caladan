@@ -34,7 +34,7 @@
           bounded (if (> n idx-length) idx-length n)]
       (hhi/doarr [x indices :range [0 bounded]]
         (conj! return-vector (get levels x)))
-      (clojure.core/vec (persistent! return-vector))))
+      (into [] (persistent! return-vector))))
 
   (select [this pred]
     "Returns a new categorical array of the items in the array for which (pred item)
@@ -96,11 +96,11 @@
 
 (defn take-int-arr
   [n ^IntegerArray int-arr]
-    (take-num-arr (.val-idx int-arr) (.values int-arr) int-slicer n))
+    (take-num-arr (.values int-arr) (.val-idx int-arr) int-slicer n))
 
 (defn take-long-arr
   [n ^LongArray long-arr]
-    (take-num-arr (.val-idx long-arr) (.values long-arr) long-slicer n))
+    (take-num-arr (.values long-arr) (.val-idx long-arr) long-slicer n))
 
 (defn make-integer-array
   "Given a vector, return a caladan IntegerArray"

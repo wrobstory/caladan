@@ -10,8 +10,8 @@
 ;; Categorical Array Handling
 
 (defn get-levels-and-indices
-  "Perform a single pass across the vector, using a HashMap of idx:value
-  for lookup, a vector of level values, and a byte-seq of indices.
+  "Given a vector, return a vector of categorical levels and a primitive int-array
+  of indices. Performs membership tests using HashMap.
 
   Ex: => (get-levels-and-indices [1 2 1 1])
       [[1 2] (0 1 0 0)
@@ -40,7 +40,7 @@
 
 (defn filter-level-indices
   "Given a predicate and a set of levels, filter the level values and return
-  a HashSet of the level indices
+  a HashSet of the indices for these values.
 
   Ex: => (filter-level-indices (> % 1) [1 2 3])
          {1 2}
@@ -58,7 +58,7 @@
       hashed-levels))
 
 (defn group-indices
-  "Group a given array of int indices and return a HashMap of {index: Bitmap}
+  "Group a given array of int indices and return a HashMap of {index: Bit-index}
 
   Ex: => (group-indices [0 1 0 1 2 1])
      {0 <RoaringBitmap {0,2}>, 1 <RoaringBitmap {1,3,5}>, 2 <RoaringBitmap {4}>}"
@@ -75,9 +75,9 @@
       return-map))
 
 (defn cat-subset-on-levels
-  "Given a int-array of level indices, a HashSet of level-indices, and the level vector,
-  return new levels, indices, and length. This subsetter is essentially
-  saying 'Give me only the levels in this HashSet'
+  "Given a primitive int-array of level indices, a HashSet of level-indices,
+  and the level vector, return new levels, indices, and length.
+  This subsetter is essentially saying 'Give me only the levels in this given HashSet'
 
   Ex: => (subset [0 1 2 0 1] {1 2} [foo bar baz])
       [[bar baz] [0 1 0]]
@@ -110,7 +110,7 @@
 
   Ex: Given levels [foo, bar, baz];
       Indexes for these levels: [0 1 0 2 1 2], which represents the array [foo bar foo baz bar baz];
-      Bitmap index of the level indices: {0 2 5}, which represent levels indices [0 0 2]
+      Bitmap index of the level indices: {0 2 5}, which translates to level indices [0 0 2]
       Reindex with new indices and levels given the bitmap index:
         levels: [foo baz]
         level-indices: [0 0 1]
@@ -185,37 +185,52 @@
       [(arr-gen (persistent! values)) val-idx arr-length]))
 
 (defn get-int-arr-comp
-  "Get components for int array"
+  "Get integer array values, value bit-index, and length"
   [input]
     (build-vals-and-index input int-array int))
 
 (defn get-long-arr-comp
-  "Get components for long array"
+  "Get long array values, value bit-index, and length"
   [input]
     (build-vals-and-index input long-array long))
 
 (defn take-num-arr
-  "Given existing NA index and primitive array, subset based on given length"
-  [^RoaringBitmap val-idx values slicer length]
+  "Given a bit-index of value positions, a primitive array of values, a slicing func,
+  and n, the number of values you want to take, generate a new set of
+  primitive values, value bit-index, and length. Returns all items if there
+  are fewer than n.
+
+  Ex: Given values [0 2 4], bit-index indicating vals at {0 1 3}, and n 3 (NA in third position)
+      take-num-arr would return [1 2] {0 1} 3 (NA in last position)
+
+  Ex2 => (take-num-arr [0 1 2 5 6] {0 1 2 5 6} 5)
+       [[0 1 2 5[ {0 1 2 5} 5]
+  Ex3: => (take-num-arr [4 9 10 20] {0 1 4 5} 4)
+       [[4 9] {0 1} 4]
+  "
+  [values ^RoaringBitmap val-idx slicer n]
     (let [new-val-idx (RoaringBitmap.)
           iterator (.getIntIterator val-idx)
           card (.getCardinality val-idx)
-          decremented (- length 1)
-          n (if (< card decremented) card decremented)]
+          decremented (- n 1)
+          f (if (< card decremented) card decremented)]
       (loop [idx 1
              value (.next iterator)]
         (cond
-          (= value n) (do
+          (= value f) (do
                         (.add new-val-idx value)
-                        [new-val-idx (slicer values idx) length])
-          (> value n) [new-val-idx (slicer values (- idx 1)) length]
-          (< value n) (do
+                        [(slicer values idx) new-val-idx n])
+          (> value f) [(slicer values (- idx 1)) new-val-idx n]
+          (< value f) (do
                         (.add new-val-idx value)
                         (recur (inc idx) (.next iterator)))))))
 
 (defmacro filter-num-arr
   "Filter numerical array values for given predicate. Return bitmap of indices and
-  filtered values. This will filter out all NA values"
+  filtered values. This will filter out all NA values
+
+
+  "
   [val-idx values pred do-iter setter slicer arr-type]
     `(let [meta-bitmap# ~(with-meta val-idx {:tag 'RoaringBitmap})
            return-indices# (RoaringBitmap.)
@@ -229,9 +244,9 @@
            (.add return-indices# iter-val#)
            (~setter return-array# @val-count# x#)
            (swap! val-count# inc)))
-       [(~slicer return-array# 0 @val-count#) return-indices#]))
+       [(~slicer return-array# @val-count#) return-indices#]))
 
 (defn filter-int-arr
   "Filter integer array"
-  [^RoaringBitmap val-idx ^ints foobars pred]
-    (filter-num-arr val-idx foobars pred hhi/doarr hhi/aset int-slicer Integer/TYPE))
+  [^RoaringBitmap val-idx ^ints values pred]
+    (filter-num-arr val-idx values pred hhi/doarr hhi/aset int-slicer Integer/TYPE))
