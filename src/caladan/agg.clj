@@ -228,10 +228,8 @@
 (defmacro filter-num-arr
   "Filter numerical array values for given predicate. Return bitmap of indices and
   filtered values. This will filter out all NA values
-
-
   "
-  [val-idx values pred do-iter setter slicer arr-type]
+  [values val-idx pred do-iter setter slicer arr-type]
     `(let [meta-bitmap# ~(with-meta val-idx {:tag 'RoaringBitmap})
            return-indices# (RoaringBitmap.)
            card# (.getCardinality meta-bitmap#)
@@ -247,6 +245,14 @@
        [(~slicer return-array# @val-count#) return-indices#]))
 
 (defn filter-int-arr
-  "Filter integer array"
-  [^RoaringBitmap val-idx ^ints values pred]
-    (filter-num-arr val-idx values pred hhi/doarr hhi/aset int-slicer Integer/TYPE))
+  "Given an int-array of values, a bit-index indicating value positions, and a predicate,
+  filter values and return both the values and the indices of those values. Note:
+  this will *always* filter NA/Nil.
+
+  Ex: Given values [0 1 3 4], val-idx {0 1 3 4}, and predicate #(< % 3)
+    filter-int-arr would return [0 1] {0 1}
+  Ex2: => (filter-int-arr [0 1 2 3 3] {0 1 2 3 4} {2 3})
+        [2 3 3] {0 1 2}
+  "
+  [^ints values ^RoaringBitmap val-idx  pred]
+    (filter-num-arr values val-idx pred hhi/doarr hhi/aset int-slicer Integer/TYPE))

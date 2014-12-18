@@ -90,4 +90,19 @@
       {:vals (long-array [4 9 10 20 40]) :val-idx (bitmapper [0 2 4 6 8]) :slicer agg/long-slicer :n 6}
       {:vals [4 9 10] :val-idx (bitmapper [0 2 4]) :l 6}
       ))
+
+  (testing "Must filter int arrays"
+    (are [in out] (let [[values val-idx] (agg/filter-int-arr (:vals in) (:val-idx in) (:pred in))]
+                    (every? true? [(= (vec values) (:vals out)),
+                                   (= val-idx (:val-idx out))]))
+
+      {:vals (int-array [1 2 4]) :val-idx (bitmapper [0 1 3]) :pred #(< % 3)}
+      {:vals [1 2] :val-idx (bitmapper [0 1])}
+
+      {:vals (int-array [0 1 1 2 2]) :val-idx (bitmapper [0 1 5 6 7]) :pred #{1 2}}
+      {:vals [1 1 2 2] :val-idx (bitmapper [1 5 6 7])}
+
+      {:vals (int-array [3 8 9 2 1]) :val-idx (bitmapper [0 2 4 5 7]) :pred #(>= % 8)}
+      {:vals [8 9] :val-idx (bitmapper [2 4])}
+      ))
 )
