@@ -13,7 +13,8 @@
 ;; int32 indices and string levels
 (defprotocol Array
   (get-vector [this n])
-  (select [this pred]))
+  (where [this pred])
+  (apply-where [this pred reducer]))
 
 (defprotocol NumericArray
   (sum [this])
@@ -36,7 +37,7 @@
         (conj! return-vector (get levels x)))
       (into [] (persistent! return-vector))))
 
-  (select [this pred]
+  (where [this pred]
     "Returns a new categorical array of the items in the array for which (pred item)
     returns true. Pred should be free of side-effects"
     (let [filtered-indices (filter-level-indices pred (.levels this))
@@ -70,11 +71,14 @@
     (hhi/asum (.values this)))
   (mean [this]
     (hhi/amean (.values this)))
-  (select [this pred]
+  (where [this pred]
     "Returns a new IntegerArray of the items in the array for which (pred item)
-    returns true. Pred should be free of side-effects. Will filter all NA values"
-    (let [[values indices] (filter-int-arr (.values this) (.val-idx this) pred)]
-      (IntegerArray. values (RoaringBitmap.) (hhi/alength values)))))
+    returns true. Pred should be free of side-effects."
+    (let [[values ^RoaringBitmap orig-val-idx ^RoaringBitmap new-val-idx]
+          (filter-int-arr (.values this) (.val-idx this) (.length this) pred)]
+      (IntegerArray. values new-val-idx (.getCardinality orig-val-idx))))
+  (apply-where [this pred reducer]
+    (filter-apply-int (.values this) pred reducer)))
 
 (deftype LongArray [^longs values ^RoaringBitmap val-idx length]
   Array

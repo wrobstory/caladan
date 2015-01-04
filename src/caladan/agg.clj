@@ -294,3 +294,15 @@
   [^ints values ^RoaringBitmap val-idx length pred]
     (filter-num-arr values val-idx length pred hhi/aset hhi/aget int-slicer Integer/TYPE))
 
+(defmacro filter-apply-num
+  [values pred reducer iterator]
+    `(let [accum# (atom 0)]
+       (~iterator [x# ~values]
+         (when (~pred x#)
+           (swap! accum# #(~reducer % x#))))
+       @accum#))
+
+(defn filter-apply-int
+  [^ints values pred reducer]
+    (filter-apply-num values pred reducer hhi/doarr))
+
