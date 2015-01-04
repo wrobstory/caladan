@@ -7,6 +7,15 @@
 
 (set! *warn-on-reflection* true)
 
+;; Utilities
+
+(defn nil-catcher
+  "Utility function to check predicates against nil input. Need to catch NPEs"
+  [pred]
+    (try
+      (pred nil)
+      (catch Exception e false)))
+
 ;; Categorical Array Handling
 
 (defn get-levels-and-indices
@@ -227,8 +236,7 @@
 
 (defmacro filter-num-arr
   "Filter numerical array values for given predicate. Return bitmap of indices and
-  filtered values. This will filter out all NA values
-  "
+  filtered values. This will filter out all NA values"
   [values val-idx pred do-iter setter slicer arr-type]
     `(let [meta-bitmap# ~(with-meta val-idx {:tag 'RoaringBitmap})
            return-indices# (RoaringBitmap.)
@@ -244,15 +252,45 @@
            (swap! val-count# inc)))
        [(~slicer return-array# @val-count#) return-indices#]))
 
+(defmacro filter-num-arr
+  "Filter numerical array values for given predicate. Return bitmap of indices and
+  filtered values. This will filter out all NA values"
+  [values val-idx length pred setter getter slicer arr-type]
+    `(let [meta-bitmap# ~(with-meta val-idx {:tag 'RoaringBitmap})
+           return-indices-original# (RoaringBitmap.)
+           return-indices-new# (RoaringBitmap.)
+           card# (.getCardinality meta-bitmap#)
+           return-array# (make-array ~arr-type card#)
+           filtered-val-count# (atom 0)
+           orig-array-idx# (atom 0)
+           nil-check# (nil-catcher ~pred)]
+        (loop [idx# 0]
+          (when (< idx# ~length)
+            (if (.contains meta-bitmap# idx#)
+              (let [next-val# (~getter ~values @orig-array-idx#)]
+                (when (~pred next-val#)
+                  (.add return-indices-original# idx#)
+                  (.add return-indices-new# @filtered-val-count#)
+                  (~setter return-array# @filtered-val-count# next-val#)
+                  (swap! filtered-val-count# inc))
+                (swap! orig-array-idx# inc))
+              (when nil-check#
+                (.add return-indices-original# idx#)))
+            (recur (inc idx#))))
+       [(~slicer return-array# @filtered-val-count#) return-indices-original# return-indices-new#]))
+
 (defn filter-int-arr
-  "Given an int-array of values, a bit-index indicating value positions, and a predicate,
+  "Given an int-array of values, a bit-index indicating value spositions, and a predicate,
   filter values and return both the values and the indices of those values. Note:
   this will *always* filter NA/Nil.
 
   Ex: Given values [0 1 3 4], val-idx {0 1 3 4}, and predicate #(< % 3)
     filter-int-arr would return [0 1] {0 1}
-  Ex2: => (filter-int-arr [0 1 2 3 3] {0 1 2 3 4} {2 3})
-        [2 3 3] {0 1 2}
+  Ex2: => (filter-int-arr [0 1 2 3 3] {0 1 3 4 5} #{2 3})
+        [2 3 3] {3 4 5}
+  Ex3: => (filter-int-arr [3 8 9 2 1] {0 2 4 5 7} #(>= % 8)
+        [8 9] {2 4}
   "
-  [^ints values ^RoaringBitmap val-idx  pred]
-    (filter-num-arr values val-idx pred hhi/doarr hhi/aset int-slicer Integer/TYPE))
+  [^ints values ^RoaringBitmap val-idx length pred]
+    (filter-num-arr values val-idx length pred hhi/aset hhi/aget int-slicer Integer/TYPE))
+

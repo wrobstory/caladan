@@ -73,7 +73,7 @@
   (select [this pred]
     "Returns a new IntegerArray of the items in the array for which (pred item)
     returns true. Pred should be free of side-effects. Will filter all NA values"
-    (let [[values indices] (filter-int-arr (.val-idx this) (.values this) pred)]
+    (let [[values indices] (filter-int-arr (.values this) (.val-idx this) pred)]
       (IntegerArray. values (RoaringBitmap.) (hhi/alength values)))))
 
 (deftype LongArray [^longs values ^RoaringBitmap val-idx length]

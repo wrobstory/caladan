@@ -6,6 +6,11 @@
            (org.roaringbitmap RoaringBitmap)))
 
 (deftest test-agg
+  (testing "Must catch nil"
+    (is (true? (agg/nil-catcher nil?)))
+    (is (false? (agg/nil-catcher #(< % 3))))
+    (is (true? (agg/nil-catcher #(or (nil? %) (== % 1))))))
+
   (testing "Must get-levels-and-indices"
     (are [in out] (let [coll []
                         [levels indices] (agg/get-levels-and-indices in)]
@@ -92,17 +97,27 @@
       ))
 
   (testing "Must filter int arrays"
-    (are [in out] (let [[values val-idx] (agg/filter-int-arr (:vals in) (:val-idx in) (:pred in))]
+    (are [in out] (let [[values val-idx-orig val-idx-new] (agg/filter-int-arr (:vals in) (:val-idx in) (:l in)(:pred in))]
                     (every? true? [(= (vec values) (:vals out)),
-                                   (= val-idx (:val-idx out))]))
+                                   (= val-idx-orig (:val-idx-orig out))
+                                   (= val-idx-new (:val-idx-new out))]))
 
-      {:vals (int-array [1 2 4]) :val-idx (bitmapper [0 1 3]) :pred #(< % 3)}
-      {:vals [1 2] :val-idx (bitmapper [0 1])}
+      {:vals (int-array [1 2 4]) :val-idx (bitmapper [0 1 3]) :l 4 :pred #(< % 3)}
+      {:vals [1 2] :val-idx-orig (bitmapper [0 1]) :val-idx-new (bitmapper [0 1])}
 
-      {:vals (int-array [0 1 1 2 2]) :val-idx (bitmapper [0 1 5 6 7]) :pred #{1 2}}
-      {:vals [1 1 2 2] :val-idx (bitmapper [1 5 6 7])}
+      {:vals (int-array [0 1 1 2 2]) :val-idx (bitmapper [0 1 5 6 7]) :l 8 :pred #{1 2}}
+      {:vals [1 1 2 2] :val-idx-orig (bitmapper [1 5 6 7]) :val-idx-new (bitmapper [0 1 2 3])}
 
-      {:vals (int-array [3 8 9 2 1]) :val-idx (bitmapper [0 2 4 5 7]) :pred #(>= % 8)}
-      {:vals [8 9] :val-idx (bitmapper [2 4])}
+      {:vals (int-array [3 8 9 2 1]) :val-idx (bitmapper [0 2 4 5 7]) :l 8 :pred #(>= % 8)}
+      {:vals [8 9] :val-idx-orig (bitmapper [2 4]) :val-idx-new (bitmapper [0 1])}
+
+      {:vals (int-array [0 1 2]) :val-idx (bitmapper [0 2 4]) :l 5 :pred nil?}
+      {:vals [] :val-idx-orig (bitmapper [1 3]) :val-idx-new (bitmapper [])}
+
+      {:vals (int-array [5 5 5]) :val-idx (bitmapper [5 6 7]) :l 8 :pred #(or (nil? %) (== % 5))}
+      {:vals [5 5 5] :val-idx-orig (bitmapper [0 1 2 3 4 5 6 7]) :val-idx-new (bitmapper [0 1 2])}
+
+      {:vals (int-array [1]) :val-idx (bitmapper [1]) :l 3 :pred #(or (nil? %) (== % 1))}
+      {:vals [1] :val-idx-orig (bitmapper [0 1 2]) :val-idx-new (bitmapper [0])}
       ))
 )
