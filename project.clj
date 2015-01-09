@@ -9,5 +9,6 @@
                  [org.apache.commons/commons-lang3 "3.3.2"]
                  [org.roaringbitmap/RoaringBitmap "0.4.6"]
                  [org.clojure/test.check "0.5.9"]
-                 [criterium "0.4.3"]]
+                 [criterium "0.4.3"]
+                 [incanter "1.9.0"]]
   :plugins [[lein-exec "0.3.4"]])

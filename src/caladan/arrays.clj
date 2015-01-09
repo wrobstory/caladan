@@ -14,7 +14,7 @@
 (defprotocol Array
   (get-vector [this n])
   (where [this pred])
-  (apply-where [this pred reducer]))
+  (reduce-where [this pred reducer init]))
 
 (defprotocol NumericArray
   (sum [this])
@@ -77,8 +77,8 @@
     (let [[values ^RoaringBitmap orig-val-idx ^RoaringBitmap new-val-idx]
           (filter-int-arr (.values this) (.val-idx this) (.length this) pred)]
       (IntegerArray. values new-val-idx (.getCardinality orig-val-idx))))
-  (apply-where [this pred reducer]
-    (filter-apply-int (.values this) pred reducer)))
+  (reduce-where [this pred reducer init]
+    (filter-reduce-int-arr pred reducer init (.values this))))
 
 (deftype LongArray [^longs values ^RoaringBitmap val-idx length]
   Array

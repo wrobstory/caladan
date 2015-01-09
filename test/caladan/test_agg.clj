@@ -120,4 +120,17 @@
       {:vals (int-array [1]) :val-idx (bitmapper [1]) :l 3 :pred #(or (nil? %) (== % 1))}
       {:vals [1] :val-idx-orig (bitmapper [0 1 2]) :val-idx-new (bitmapper [0])}
       ))
+
+  (testing "Must filter-reduce int arrays"
+    (are [in out] (let [red (agg/filter-reduce-int-arr (:pred in) (:reducer in) (:init in) (:values in))]
+                    (= red out))
+      {:pred pos? :reducer + :init 0 :values (int-array [-1 -2 0 1 2 3])} 6
+
+      {:pred #{1} :reducer - :init 10 :values (int-array [1 1 1 1])} 6
+
+      {:pred #(> % 3) :reducer + :init 0 :values (int-array [0 1 2 3 4 5])} 9
+
+      {:pred #{2} :reducer #(* %1 %2) :init 1 :values (int-array [1 1 1 2 2 2])} 8
+
+      {:pred #(= (/ % 2) 4) :reducer #(+ %1 %2 10) :init 0 :values (int-array [1 2 8 3 4 8])} 36))
 )

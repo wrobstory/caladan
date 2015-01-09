@@ -294,15 +294,26 @@
   [^ints values ^RoaringBitmap val-idx length pred]
     (filter-num-arr values val-idx length pred hhi/aset hhi/aget int-slicer Integer/TYPE))
 
-(defmacro filter-apply-num
-  [values pred reducer iterator]
-    `(let [accum# (atom 0)]
+(defmacro filter-reduce-num
+  "Given a filtering predicate, a reducer, a initializing value for the reducer,
+  a primitive array of values, and a hip-hip iterator, filter and reduce"
+  [pred reducer init values iterator]
+    `(let [accum# (atom ~init)]
        (~iterator [x# ~values]
          (when (~pred x#)
            (swap! accum# #(~reducer % x#))))
        @accum#))
 
-(defn filter-apply-int
-  [^ints values pred reducer]
-    (filter-apply-num values pred reducer hhi/doarr))
+(defn filter-reduce-int-arr
+  "Given a filtering predicate, a reducer, an initial reducing value, and an
+  int-array, filter + reduce the values in one pass
+
+  Ex: Given values [0 1 2 3 4 5], pred #(> % 3), reducer +, and init 0
+      filter-reduce-int would return 9
+  Ex: => (filter-reduce-int #{2} #(* %1 %2) 1 [1 1 1 2 2 2])
+      8
+  Ex: => (filter-reduce-int #(= (/ % 2) 4) #(+ %1 %2 10) 0 [1 2 8 3 4 8])
+      36"
+  [pred reducer init ^ints values]
+    (filter-reduce-num pred reducer init values hhi/doarr))
 
