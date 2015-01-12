@@ -116,3 +116,15 @@
   "Get vector from array"
   [array]
     (get-vector array (.length array)))
+
+;; Tables
+
+(defrecord Table [columns]
+  )
+
+(defn make-table
+  "Make Caladan table out of map of Caladan Arrays. Arrays *must* be the same
+  length"
+  [arrays]
+    (let [arr-len (atom 0)]))
+

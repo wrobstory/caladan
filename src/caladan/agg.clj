@@ -297,12 +297,14 @@
 (defmacro filter-reduce-num
   "Given a filtering predicate, a reducer, a initializing value for the reducer,
   a primitive array of values, and a hip-hip iterator, filter and reduce"
-  [pred reducer init values iterator]
-    `(let [accum# (atom ~init)]
-       (~iterator [x# ~values]
-         (when (~pred x#)
-           (swap! accum# #(~reducer % x#))))
-       @accum#))
+  [pred reducer init values getter length]
+    `(loop [accum# ~init
+            idx# 0
+            next-val# (~getter ~values 0)]
+       (let [branch# (if (~pred next-val#) (~reducer accum# next-val#) accum#)]
+         (if (= idx# ~length)
+           branch#
+           (recur branch# (inc idx#) (~getter ~values (inc idx#)))))))
 
 (defn filter-reduce-int-arr
   "Given a filtering predicate, a reducer, an initial reducing value, and an
@@ -315,5 +317,4 @@
   Ex: => (filter-reduce-int #(= (/ % 2) 4) #(+ %1 %2 10) 0 [1 2 8 3 4 8])
       36"
   [pred reducer init ^ints values]
-    (filter-reduce-num pred reducer init values hhi/doarr))
-
+    (filter-reduce-num pred reducer init ^ints values hhi/aget (- (hhi/alength values) 1)))
