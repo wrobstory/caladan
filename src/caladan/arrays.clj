@@ -19,7 +19,8 @@
 (defprotocol NumericArray
   (sum [this])
   (mean [this])
-  (count [this]))
+  (count [this])
+  (na-count [this]))
 
 ;; Categorical array: primitive integer indices (accepts extremely large cardinality)
 ;; Levels are a simple Clojure vector
@@ -62,11 +63,13 @@
 
 ;; Numeric Arrays. primitive values, value indices kept in bit-index.
 
-(deftype IntegerArray [^ints values ^RoaringBitmap val-idx length]
+(deftype IntegerArray [^ints values ^RoaringBitmap val-idx length num-type]
 
   Array
   NumericArray
 
+  (na-count [this]
+    (- (.length this) (.getCardinality (.val-idx this))))
   (sum [this]
     (hhi/asum (.values this)))
   (mean [this]
@@ -76,11 +79,11 @@
     returns true. Pred should be free of side-effects."
     (let [[values ^RoaringBitmap orig-val-idx ^RoaringBitmap new-val-idx]
           (filter-int-arr (.values this) (.val-idx this) (.length this) pred)]
-      (IntegerArray. values new-val-idx (.getCardinality orig-val-idx))))
+      (IntegerArray. values new-val-idx (.getCardinality orig-val-idx) "Integer")))
   (reduce-where [this pred reducer init]
     (filter-reduce-int-arr pred reducer init (.values this))))
 
-(deftype LongArray [^longs values ^RoaringBitmap val-idx length]
+(deftype LongArray [^longs values ^RoaringBitmap val-idx length num-type]
   Array
   NumericArray
 
@@ -89,7 +92,7 @@
   (mean [this]
     (hhl/amean (.values this))))
 
-(deftype FloatArray [^floats values ^RoaringBitmap val-idx length]
+(deftype FloatArray [^floats values ^RoaringBitmap val-idx length num-type]
   Array
   NumericArray
 
@@ -106,11 +109,18 @@
   [n ^LongArray long-arr]
     (take-num-arr (.values long-arr) (.val-idx long-arr) long-slicer n))
 
+(defmethod clojure.core/print-method caladan.arrays.NumericArray
+  [^caladan.arrays.NumericArray arr ^java.io.Writer w]
+    (.write w (clojure.string/join ", " [(str "<Numeric Array>")
+                                         (str "Type: " (.num-type arr))
+                                         (str "Length: " (.length arr))
+                                         (str "NA Count: " (na-count arr))])))
+
 (defn make-integer-array
   "Given a vector, return a caladan IntegerArray"
   [^clojure.lang.PersistentVector arr-vec]
     (let [[values val-idx length] (get-int-arr-comp arr-vec)]
-      (IntegerArray. values val-idx length)))
+      (IntegerArray. values val-idx length "Integer")))
 
 (defn vec
   "Get vector from array"
@@ -126,5 +136,10 @@
   "Make Caladan table out of map of Caladan Arrays. Arrays *must* be the same
   length"
   [arrays]
-    (let [arr-len (atom 0)]))
+    (let [arr-len (.length (second (first arrays)))]
+      (println arr-len)
+      (map #(if (not= arr-len (.length %))
+              (throw (java.lang.IllegalArgumentException. "Arrays must be of same length!")))
+           (vals arrays))
+      (Table. arrays)))
 
