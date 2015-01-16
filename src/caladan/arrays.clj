@@ -137,9 +137,23 @@
   length"
   [arrays]
     (let [arr-len (.length (second (first arrays)))]
-      (println arr-len)
-      (map #(if (not= arr-len (.length %))
-              (throw (java.lang.IllegalArgumentException. "Arrays must be of same length!")))
-           (vals arrays))
+      (dorun
+        (map #(if (not= arr-len (.length %))
+                (throw (java.lang.IllegalArgumentException. "Arrays must be of same length!")))
+             (vals arrays)))
       (Table. arrays)))
+
+(defn- length-comp-throw
+  "Throw error if array lengths not equal"
+  [current_length ^caladan.arrays.Array array]
+    (if (not= current_length (.length array))
+      (throw (java.lang.IllegalArgumentException. "Arrays must be of same length!"))
+      current_length))
+
+(defn make-table
+  "Make Caladan table out of map of Caladan Arrays. Arrays *must* be the same
+  length"
+  [arrays]
+    (reduce length-comp-throw (.length (second (first arrays))) (vals arrays))
+    (Table. arrays))
 
