@@ -5,13 +5,14 @@
             [caladan.agg :refer :all])
   (:import (java.io.Writer)
            (org.roaringbitmap RoaringBitmap))
-  (:refer-clojure :exclude [vec count]))
+  (:refer-clojure :exclude [vec count take]))
 
 (set! *warn-on-reflection* true)
 
 ;; Homogeneous Arrays, either of a given type or a categorical array with
 ;; int32 indices and string levels
 (defprotocol Array
+  (take [this n])
   (get-vector [this n])
   (where [this pred])
   (reduce-where [this pred reducer init]))
@@ -68,18 +69,26 @@
   Array
   NumericArray
 
+  (take [this n]
+    (let [[values val-idx length] (take-num-arr (.values this) (.val-idx this) int-slicer n)]
+      (IntegerArray. values val-idx length "Integer")))
+
   (na-count [this]
     (- (.length this) (.getCardinality (.val-idx this))))
+
   (sum [this]
     (hhi/asum (.values this)))
+
   (mean [this]
     (hhi/amean (.values this)))
+
   (where [this pred]
     "Returns a new IntegerArray of the items in the array for which (pred item)
     returns true. Pred should be free of side-effects."
     (let [[values ^RoaringBitmap orig-val-idx ^RoaringBitmap new-val-idx]
           (filter-int-arr (.values this) (.val-idx this) (.length this) pred)]
       (IntegerArray. values new-val-idx (.getCardinality orig-val-idx) "Integer")))
+
   (reduce-where [this pred reducer init]
     (filter-reduce-int-arr pred reducer init (.values this))))
 
@@ -100,14 +109,6 @@
     (hhf/asum (.values this)))
   (mean [this]
     (hhf/amean (.values this))))
-
-(defn take-int-arr
-  [n ^IntegerArray int-arr]
-    (take-num-arr (.values int-arr) (.val-idx int-arr) int-slicer n))
-
-(defn take-long-arr
-  [n ^LongArray long-arr]
-    (take-num-arr (.values long-arr) (.val-idx long-arr) long-slicer n))
 
 (defmethod clojure.core/print-method caladan.arrays.NumericArray
   [^caladan.arrays.NumericArray arr ^java.io.Writer w]

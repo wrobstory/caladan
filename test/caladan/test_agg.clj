@@ -81,19 +81,25 @@
       {:slicer agg/long-slicer :arr (long-array [1 2 3 4]) :length 3} [1 2 3]))
 
   (testing "Must take numeric arrays"
-    (are [in out] (let [[values val-idx length] (agg/take-num-arr (:vals in) (:val-idx in) (:slicer in) (:n in))]
+    (are [in out] (let [[values val-idx length] (agg/take-num-arr (:vals in) (:val-idx in) (:l in) (:slicer in) (:n in))]
                     (every? true? [(= (vec values) (:vals out)),
                                    (= val-idx (:val-idx out))
                                    (= length (:l out))]))
 
-      {:vals (int-array [1 2 4]) :val-idx (bitmapper [0 1 3]) :slicer agg/int-slicer :n 3}
+      {:vals (int-array [1 2 4]) :val-idx (bitmapper [0 1 3]) :l 4 :slicer agg/int-slicer :n 3}
       {:vals [1 2] :val-idx (bitmapper [0 1]) :l 3}
 
-      {:vals (long-array [0 1 2 5 6]) :val-idx (bitmapper [0 1 2 5 6]) :slicer agg/long-slicer :n 5}
+      {:vals (long-array [0 1 2 5 6]) :val-idx (bitmapper [0 1 2 5 6]) :l 8 :slicer agg/long-slicer :n 5}
       {:vals [0 1 2] :val-idx (bitmapper [0 1 2]) :l 5}
 
-      {:vals (long-array [4 9 10 20 40]) :val-idx (bitmapper [0 2 4 6 8]) :slicer agg/long-slicer :n 6}
+      {:vals (long-array [4 9 10 20 40]) :val-idx (bitmapper [0 2 4 6 8]) :l 9 :slicer agg/long-slicer :n 6}
       {:vals [4 9 10] :val-idx (bitmapper [0 2 4]) :l 6}
+
+      {:vals (long-array [1 2 3]) :val-idx (bitmapper [0 2 4]) :l 5 :slicer agg/long-slicer :n 6}
+      {:vals [1 2 3] :val-idx (bitmapper [0 2 4]) :l 5}
+
+      {:vals (long-array [1 2 3]) :val-idx (bitmapper [0 2 4]) :l 5 :slicer agg/long-slicer :n 5}
+      {:vals [1 2 3] :val-idx (bitmapper [0 2 4]) :l 5}
       ))
 
   (testing "Must filter int arrays"

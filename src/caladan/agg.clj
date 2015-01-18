@@ -217,22 +217,24 @@
   Ex3: => (take-num-arr [4 9 10 20] {0 1 4 5} 4)
        [[4 9] {0 1} 4]
   "
-  [values ^RoaringBitmap val-idx slicer n]
-    (let [new-val-idx (RoaringBitmap.)
-          iterator (.getIntIterator val-idx)
-          card (.getCardinality val-idx)
-          decremented (- n 1)
-          f (if (< card decremented) card decremented)]
-      (loop [idx 1
-             value (.next iterator)]
-        (cond
-          (= value f) (do
-                        (.add new-val-idx value)
-                        [(slicer values idx) new-val-idx n])
-          (> value f) [(slicer values (- idx 1)) new-val-idx n]
-          (< value f) (do
-                        (.add new-val-idx value)
-                        (recur (inc idx) (.next iterator)))))))
+  [values ^RoaringBitmap val-idx original-length slicer n]
+    (if (>= n original-length)
+      [values val-idx original-length]
+      (let [new-val-idx (RoaringBitmap.)
+            iterator (.getIntIterator val-idx)
+            card (.getCardinality val-idx)
+            decremented (- n 1)
+            f (if (< card decremented) card decremented)]
+        (loop [idx 1
+               value (.next iterator)]
+          (cond
+            (= value f) (do
+                          (.add new-val-idx value)
+                          [(slicer values idx) new-val-idx n])
+            (> value f) [(slicer values (- idx 1)) new-val-idx n]
+            (< value f) (do
+                          (.add new-val-idx value)
+                          (recur (inc idx) (.next iterator))))))))
 
 (defmacro filter-num-arr
   "Filter numerical array values for given predicate. Return bitmap of indices and
