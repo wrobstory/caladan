@@ -14,13 +14,13 @@
 (defprotocol Array
   (take [this n])
   (get-vector [this n])
-  (where [this pred])
-  (reduce-where [this pred reducer init]))
+  (where [this pred]))
 
 (defprotocol NumericArray
   (sum [this])
   (mean [this])
   (count [this])
+  (reduce-where [this pred reducer init])
   (na-count [this]))
 
 ;; Categorical array: primitive integer indices (accepts extremely large cardinality)
@@ -64,51 +64,44 @@
 
 ;; Numeric Arrays. primitive values, value indices kept in bit-index.
 
+(def NumericMethods {
+
+  :na-count (fn [arr]
+    (- (.length arr) (.getCardinality (.val-idx arr))))
+
+  :sum (fn [arr]
+    (hhi/asum (.values arr)))
+
+  :mean (fn [arr]
+    (hhi/amean (.values arr)))
+
+  :reduce-where (fn [arr pred reducer init]
+    (filter-reduce-int-arr pred reducer init (.values arr)))})
+
 (deftype IntegerArray [^ints values ^RoaringBitmap val-idx length num-type]
 
   Array
-  NumericArray
 
   (take [this n]
-    (let [[values val-idx length] (take-num-arr (.values this) (.val-idx this) int-slicer n)]
+    (let [[values val-idx length] (take-num-arr (.values this) (.val-idx this) (.length this) int-slicer n)]
       (IntegerArray. values val-idx length "Integer")))
-
-  (na-count [this]
-    (- (.length this) (.getCardinality (.val-idx this))))
-
-  (sum [this]
-    (hhi/asum (.values this)))
-
-  (mean [this]
-    (hhi/amean (.values this)))
 
   (where [this pred]
     "Returns a new IntegerArray of the items in the array for which (pred item)
     returns true. Pred should be free of side-effects."
     (let [[values ^RoaringBitmap orig-val-idx ^RoaringBitmap new-val-idx]
           (filter-int-arr (.values this) (.val-idx this) (.length this) pred)]
-      (IntegerArray. values new-val-idx (.getCardinality orig-val-idx) "Integer")))
-
-  (reduce-where [this pred reducer init]
-    (filter-reduce-int-arr pred reducer init (.values this))))
+      (IntegerArray. values new-val-idx (.getCardinality orig-val-idx) "Integer"))))
 
 (deftype LongArray [^longs values ^RoaringBitmap val-idx length num-type]
-  Array
-  NumericArray
-
-  (sum [this]
-    (hhl/asum (.values this)))
-  (mean [this]
-    (hhl/amean (.values this))))
+  Array)
 
 (deftype FloatArray [^floats values ^RoaringBitmap val-idx length num-type]
-  Array
-  NumericArray
+  Array)
 
-  (sum [this]
-    (hhf/asum (.values this)))
-  (mean [this]
-    (hhf/amean (.values this))))
+(extend IntegerArray NumericArray NumericMethods)
+(extend LongArray NumericArray NumericMethods)
+(extend FloatArray NumericArray NumericMethods)
 
 (defmethod clojure.core/print-method caladan.arrays.NumericArray
   [^caladan.arrays.NumericArray arr ^java.io.Writer w]

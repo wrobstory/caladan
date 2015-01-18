@@ -3,7 +3,7 @@
             [caladan.arrays :as ca])
   (:import (java.util HashSet)))
 
-(deftest test-arrays
+(deftest test-categorical-arrays
   (testing "Creates categorical array"
     (are [in out] (let [cat-array (ca/make-categorical-array in)
                         levels (.levels cat-array)
