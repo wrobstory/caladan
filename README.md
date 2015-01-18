@@ -8,7 +8,7 @@ PSA: Literally none of this has been implemented
 #### I/O
 Read from CSV:
 ```clojure
-table-from-csv "foo.csv")
+(table-from-csv "foo.csv")
 ```
 Read from SQL:
 ```clojure
@@ -38,7 +38,7 @@ Get distinct values for given columns (or the whole table)
 
 Sort values for given vector of cols
 ```clojure
-(sort table [:col1])
+(sort table {:col1 #(sortfunc)} :type :asc])
 ```
 
 Filter values where a predicate is matched
@@ -51,6 +51,9 @@ Apply a function on columns
 (apply table {:col1 #(* 4 %) :col2 #(str % "_appender")})
 ```
 
+Potentially: Apply a function with logic on multiple cols
+(apply (fn [:col1 :col2](do-some-stuff-including-filter)))
+
 Reduce columns
 ```clojure
 ;; This will probably return a map of {:col reduced_value}?
@@ -59,48 +62,13 @@ Reduce columns
 
 Select columns
 ```clojure
-(select [:col1 :col2])
-```
-
-Select columns with where-filtering predicates on other cols
-```clojure
-(select [:col1] :where {:col2 #{1 2}})
-```
-
-Select columns with where-filtering predicates and a reducer
-```clojure
-;; "Select col1 where col2 is in the set #{1 2} and reduce the resulting values"
-(select [:col1] :where {:col2 #{1 2}} :reduce +)
+(select table [:col1 :col2])
 ```
 
 Group a table. This will return a map of group keys to...new tables?
 ```clojure
 (groupby table [:col1])
 {:foo-group <Table> :bar-group <Table>}
-```
-
-Group a table, apply a function to given cols in a given group
-```clojure
-(groupby table [:col1] :apply {:foo-group  {:col2 #(+ % 1)}})
-{:foo-group <TableWithApply> :bar-group <Table>}
-```
-
-Group a table, apply a function to all groups, then reduce (full split-apply-combine)
-```clojure
-;; This groups by col1, applies the function to col2 in all groups, then reduces all cols with +
-(groupby table [:col1] :apply {:col2 #(+ % 1)} :reduce +)
-```
-
-Group a table with a where predicate
-```
-(groupby table [:col1] :where {:col2 #{1 2}} :reduce *)
-```
-
-There are shortcuts for common aggregations
-```clojure
-(groupby table [:col1] :reduce :mean)
-(groupby table [:col1] :reduce :sum)
-(groupby table [:col1] :reduce max)
 ```
 
 Join two tables
@@ -117,3 +85,18 @@ Set operations
 (union table1 table2)
 (diff table1 table2)
 ```
+
+Compose a pipeline of operations:
+```clojure
+(c<- table
+     (filter {:col1 #{1}})
+     (groupby [:col2])
+     (reduce {:col1 +}))
+```
+
+Equivalent to
+```sql
+select sum(col1)
+from table
+where col1 = 1
+groupby col2;

@@ -129,7 +129,7 @@
 
 ;; Tables
 
-(defrecord Table [columns]
+(deftype Table [columns]
   )
 
 (defn make-table
