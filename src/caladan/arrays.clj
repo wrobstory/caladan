@@ -52,7 +52,7 @@
     (let [^longs indices (.indices arr)
           levels (.levels arr)]
       (.write w (clojure.string/join ", " [(str "<Categorical Array>")
-                                           (str "Cardinality: " (count levels))
+                                           (str "Cardinality: " (clojure.core/count levels))
                                            (str "Count: " (.length arr))
                                            (str "Take 5: " (get-vector arr 5))]))))
 
@@ -64,44 +64,53 @@
 
 ;; Numeric Arrays. primitive values, value indices kept in bit-index.
 
-(def NumericMethods {
-
-  :na-count (fn [arr]
-    (- (.length arr) (.getCardinality (.val-idx arr))))
-
-  :sum (fn [arr]
-    (hhi/asum (.values arr)))
-
-  :mean (fn [arr]
-    (hhi/amean (.values arr)))
-
-  :reduce-where (fn [arr pred reducer init]
-    (filter-reduce-int-arr pred reducer init (.values arr)))})
-
 (deftype IntegerArray [^ints values ^RoaringBitmap val-idx length num-type]
 
   Array
+  NumericArray
 
   (take [this n]
     (let [[values val-idx length] (take-num-arr (.values this) (.val-idx this) (.length this) int-slicer n)]
       (IntegerArray. values val-idx length "Integer")))
+
+  (na-count [this]
+    (- (.length this) (.getCardinality (.val-idx this))))
+
+  (sum [this]
+    (hhi/asum (.values this)))
+
+  (mean [this]
+    (hhi/amean (.values this)))
 
   (where [this pred]
     "Returns a new IntegerArray of the items in the array for which (pred item)
     returns true. Pred should be free of side-effects."
     (let [[values ^RoaringBitmap orig-val-idx ^RoaringBitmap new-val-idx]
           (filter-int-arr (.values this) (.val-idx this) (.length this) pred)]
-      (IntegerArray. values new-val-idx (.getCardinality orig-val-idx) "Integer"))))
+      (IntegerArray. values new-val-idx (.getCardinality orig-val-idx) "Integer")))
+
+  (reduce-where [this pred reducer init]
+    (filter-reduce-int-arr pred reducer init (.values this))))
 
 (deftype LongArray [^longs values ^RoaringBitmap val-idx length num-type]
-  Array)
+  Array
+  NumericArray
+
+  (sum [this]
+    (hhl/asum (.values this)))
+
+  (mean [this]
+    (hhl/amean (.values this))))
 
 (deftype FloatArray [^floats values ^RoaringBitmap val-idx length num-type]
-  Array)
+  Array
+  NumericArray
 
-(extend IntegerArray NumericArray NumericMethods)
-(extend LongArray NumericArray NumericMethods)
-(extend FloatArray NumericArray NumericMethods)
+  (sum [this]
+    (hhf/asum (.values this)))
+
+  (mean [this]
+    (hhf/amean (.values this))))
 
 (defmethod clojure.core/print-method caladan.arrays.NumericArray
   [^caladan.arrays.NumericArray arr ^java.io.Writer w]
@@ -120,34 +129,3 @@
   "Get vector from array"
   [array]
     (get-vector array (.length array)))
-
-;; Tables
-
-(deftype Table [columns]
-  )
-
-(defn make-table
-  "Make Caladan table out of map of Caladan Arrays. Arrays *must* be the same
-  length"
-  [arrays]
-    (let [arr-len (.length (second (first arrays)))]
-      (dorun
-        (map #(if (not= arr-len (.length %))
-                (throw (java.lang.IllegalArgumentException. "Arrays must be of same length!")))
-             (vals arrays)))
-      (Table. arrays)))
-
-(defn- length-comp-throw
-  "Throw error if array lengths not equal"
-  [current_length ^caladan.arrays.Array array]
-    (if (not= current_length (.length array))
-      (throw (java.lang.IllegalArgumentException. "Arrays must be of same length!"))
-      current_length))
-
-(defn make-table
-  "Make Caladan table out of map of Caladan Arrays. Arrays *must* be the same
-  length"
-  [arrays]
-    (reduce length-comp-throw (.length (second (first arrays))) (vals arrays))
-    (Table. arrays))
-
