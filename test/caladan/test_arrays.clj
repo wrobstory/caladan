@@ -12,6 +12,16 @@
                                    (= indices (get out 1))]))
          [1 2 3] [[1 2 3][0 1 2]]))
 
+  (testing "Takes from categorical array"
+    (are [in out] (let [cat-array (ca/make-categorical-array (:vec in))
+                        taken (ca/take cat-array (:n in))
+                        indices (.indices taken)
+                        levels (.levels taken)]
+                    (every? true? [(= (vec indices) (:indices out))
+                                   (= levels (:levels out))]))
+      {:vec ["a" "b" "c" "d"] :n 3} {:indices [0 1 2] :levels ["a" "b" "c"]}
+      {:vec ["a" "b" "c"] :n 20} {:indices [0 1 2] :levels ["a" "b" "c"]}))
+
   (testing "Gets vector from categorical array"
     (are [in out] (let [cat-array (ca/make-categorical-array in)
                         taken (ca/get-vector cat-array (get out 0))]

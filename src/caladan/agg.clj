@@ -47,6 +47,34 @@
           (recur (rest values) (inc idx))))
       [@levels indices]))
 
+(defn take-categorical
+  "Given the indices and levels in a Categorical array, take the first n values.
+  Will essentially reset the indices and levels for the subset.
+
+  Ex: => (take-categorical [0 1 2 0 0 1] [a b c] 3)
+      [[a b c] [0 1 2]]
+  Ex: => (take-categorical [0 1 0 4 3 2] [a b c d e] 4)
+      [[a b e] [0 1 0 2]]
+  "
+  [^ints indices ^PersistentVector levels n]
+    (if (> n (hhi/alength indices))
+      [levels indices]
+      (let [new-levels (transient [])
+            new-indices (transient [])
+            new-level-map (HashMap.)
+            new-level-count (atom 0)]
+        (hhi/doarr [[i x] indices :range [0 n]]
+          (let [existing-level (levels x)
+                new-level (.get new-level-map existing-level)]
+            (if new-level
+              (conj! new-indices new-level)
+              (do
+                (conj! new-indices @new-level-count)
+                (conj! new-levels existing-level)
+                (.put new-level-map existing-level @new-level-count)
+                (swap! new-level-count inc)))))
+        [(persistent! new-levels) (int-array (persistent! new-indices))])))
+
 (defn filter-level-indices
   "Given a predicate and a set of levels, filter the level values and return
   a HashSet of the indices for these values.

@@ -1,9 +1,13 @@
 (ns caladan.table
-  (:require [caladan.arrays :as ca]))
+  (:require [caladan.arrays :as ca])
+  (:refer-clojure :exclude [take]))
 
 ;; Tables
 
 (deftype Table [columns]
+
+  ; (take [this n])
+
   )
 
 (defmethod clojure.core/print-method caladan.table.Table

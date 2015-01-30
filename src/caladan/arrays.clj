@@ -26,7 +26,16 @@
 ;; Categorical array: primitive integer indices (accepts extremely large cardinality)
 ;; Levels are a simple Clojure vector
 (deftype CategoricalArray [levels ^ints indices length]
+
   Array
+
+  (take [this n]
+    "Take n values of the array"
+    (let [indices (.indices this)
+          levels (.levels this)
+          [new-levels new-indices] (take-categorical indices levels n)]
+      (CategoricalArray. new-levels new-indices (hhi/alength new-indices))))
+
   (get-vector [this n]
     "Returns vector for the first n items in the array. Currently raises if
     more than n items in array."

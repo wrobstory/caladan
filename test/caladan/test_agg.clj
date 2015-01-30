@@ -5,21 +5,31 @@
   (:import (java.util HashSet)
            (org.roaringbitmap RoaringBitmap)))
 
-(deftest test-agg
+(deftest test-categorical-agg
   (testing "Must catch nil"
     (is (true? (agg/nil-catcher nil?)))
     (is (false? (agg/nil-catcher #(< % 3))))
     (is (true? (agg/nil-catcher #(or (nil? %) (== % 1))))))
 
   (testing "Must get-levels-and-indices"
-    (are [in out] (let [coll []
-                        [levels indices] (agg/get-levels-and-indices in)]
+    (are [in out] (let [[levels indices] (agg/get-levels-and-indices in)]
                     (every? true? [(= levels (get out 0))
                                    (= (vec indices) (get out 1))]))
       [1 2 3] [[1 2 3][0 1 2]]
       [true false true true] [[true false][0 1 0 0]]
       ["foo" "bar" "baz" "foo" "foo"] [["foo" "bar" "baz"][0 1 2 0 0]]
       [1.0 4.0 1.0 5.0] [[1.0 4.0 5.0][0 1 0 2]]))
+
+  (testing "Must take levels and indices"
+    (are [in out] (let [[levels indices] (agg/take-categorical (:indices in) (:levels in) (:n in))]
+                    (every? true? [(= levels (:levels out))
+                                   (= (vec indices) (:indices out))]))
+      {:indices (int-array [0 1 2]) :levels ["a" "b" "c"] :n 2} {:indices [0 1] :levels ["a" "b"]}
+      {:indices (int-array [0 1 3 1 1]) :levels ["a" "b" "c" "d"] :n 3} {:indices [0 1 2] :levels ["a" "b" "d"]}
+      {:indices (int-array [3 2 1 0]) :levels ["a" "b" "c" "d"] :n 4} {:indices [0 1 2 3] :levels ["d" "c" "b" "a"]}
+      ;; If (> n count(indices)), just returns what gets passed in
+      {:indices (int-array [0 3 1 2]) :levels ["a" "b" "c" "d"] :n 10} {:indices [0 3 1 2] :levels ["a" "b" "c" "d"]}
+    ))
 
   (testing "Must filter level indices and produce a HashSet of level indices"
     (are [in out] (= (agg/filter-level-indices (get in 0) (get in 1)) out)
@@ -55,7 +65,9 @@
       [(int-array [1 2 0 1 3]) (bitmapper [0 1 4]) ["a" "b" "c" "d"]] [["b" "c" "d"] [0 1 2]]
       [(int-array [0 1 0 0 2]) (bitmapper [0 2 3]) ["a" "b" "c"]] [["a"] [0 0 0]]
       [(int-array [1 1 0 2 1]) (bitmapper [0 2]) ["a" "b" "c"]] [["b" "a"] [0 1]]))
+  )
 
+(deftest test-numerical-agg
   (testing "Must create int values and value index"
     (are [in out] (let [[values val-idx length] (agg/get-int-arr-comp in)]
                     (every? true? [(= (vec values)  (get out 0)),

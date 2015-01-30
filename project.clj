@@ -11,4 +11,5 @@
                  [org.clojure/test.check "0.5.9"]
                  [criterium "0.4.3"]
                  [incanter "1.9.0"]]
-  :plugins [[lein-exec "0.3.4"]])
+  :plugins [[lein-exec "0.3.4"]]
+  :aot :all)
