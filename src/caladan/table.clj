@@ -2,11 +2,25 @@
   (:require [caladan.arrays :as ca])
   (:refer-clojure :exclude [take]))
 
+;; Helper funcs
+
+(defn map-vals
+"Given a map and a function, returns the map resulting from applying the function to each value."
+  [m f mapper]
+    (zipmap (keys m) (mapper f (vals m))))
+
 ;; Tables
+
+(defprotocol TableProt
+  (take [this n]))
 
 (deftype Table [columns]
 
-  ; (take [this n])
+  TableProt
+
+  (take [this n]
+    (let [result (map-vals (.columns this) #(ca/take % n) pmap)]
+      (Table. result)))
 
   )
 
