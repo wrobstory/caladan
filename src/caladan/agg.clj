@@ -184,8 +184,8 @@
 ;; Helper funcs
 (defmacro slicer
   "Create an array slicer for a given type"
-  [arr slice arr-type iterator setter]
-    `(let [arr-len# (count ~arr)
+  [arr slice arr-type iterator setter counter]
+    `(let [arr-len# (~counter ~arr)
            n# (if (> ~slice arr-len#) arr-len# ~slice)
            new-arr# (make-array ~arr-type n#)]
        (~iterator [[i# x#] ~arr :range [0 n#]]
@@ -195,12 +195,12 @@
 (defn int-slicer
   "Slice primitive integer arrays for given length"
   [arr length]
-    (slicer arr length Integer/TYPE hhi/doarr hhi/aset))
+    (slicer arr length Integer/TYPE hhi/doarr hhi/aset hhi/alength))
 
 (defn long-slicer
   "Slice primitive long arrays for given length"
   [arr length]
-    (slicer arr length Long/TYPE hhl/doarr hhl/aset))
+    (slicer arr length Long/TYPE hhl/doarr hhl/aset hhl/alength))
 
 (defn build-vals-and-index
   "Given a vector input, an array generator (Ex: int-array), and a scalar-type,

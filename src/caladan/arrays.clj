@@ -78,6 +78,8 @@
   Array
   NumericArray
 
+  (get-vector [this n] (clojure.core/vec (int-slicer (.values this) n)))
+
   (take [this n]
     (let [[values val-idx length] (take-num-arr (.values this) (.val-idx this) (.length this) int-slicer n)]
       (IntegerArray. values val-idx length "Integer")))
@@ -102,8 +104,11 @@
     (filter-reduce-int-arr pred reducer init (.values this))))
 
 (deftype LongArray [^longs values ^RoaringBitmap val-idx length num-type]
+
   Array
   NumericArray
+
+  (get-vector [this n] (clojure.core/vec (long-slicer (.values this) n)))
 
   (sum [this]
     (hhl/asum (.values this)))
@@ -112,6 +117,7 @@
     (hhl/amean (.values this))))
 
 (deftype FloatArray [^floats values ^RoaringBitmap val-idx length num-type]
+
   Array
   NumericArray
 

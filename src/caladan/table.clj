@@ -12,7 +12,8 @@
 ;; Tables
 
 (defprotocol TableProt
-  (take [this n]))
+  (take [this n])
+  (to-map [this]))
 
 (deftype Table [columns]
 
@@ -21,6 +22,10 @@
   (take [this n]
     (let [result (map-vals (.columns this) #(ca/take % n) pmap)]
       (Table. result)))
+
+  (to-map [this]
+    (let [col-map (.columns this)]
+      (zipmap (keys col-map) (map #(ca/get-vector %1 (.length %1)) (vals col-map)))))
 
   )
 
